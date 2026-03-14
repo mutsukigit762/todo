@@ -119,7 +119,11 @@ background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
 .cat-color {
 width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
 }
-.cat-name { flex: 1; font-size: 14px; }
+.cat-name {
+flex: 1; font-size: 14px; border: none; background: transparent;
+outline: none; font-family: inherit; cursor: text; padding: 0;
+}
+.cat-name:focus { border-bottom: 1.5px solid #ccc; }
 .cat-del {
 border: none; background: none; cursor: pointer;
 color: #ccc; font-size: 16px; line-height: 1;
@@ -242,6 +246,12 @@ function addCategory() {
   input.value = '';
   save(); renderCatModal(); render();
 }
+function renameCategory(id, name) {
+  name = name.trim();
+  if (!name) return;
+  categories = categories.map(c => c.id === id ? {...c, name} : c);
+  save(); render();
+}
 function deleteCategory(id) {
   categories = categories.filter(c => c.id !== id);
   todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
@@ -266,7 +276,9 @@ function renderCatModal() {
     list.innerHTML = categories.map(c => `
       <div class="cat-item">
         <div class="cat-color" style="background:${catColor(c.id)}"></div>
-        <span class="cat-name">${escapeHtml(c.name)}</span>
+        <input class="cat-name" value="${escapeHtml(c.name)}"
+          onchange="renameCategory('${c.id}', this.value)"
+          onblur="renameCategory('${c.id}', this.value)" />
         <button class="cat-del" onclick="deleteCategory('${c.id}')">×</button>
       </div>
     `).join('');
