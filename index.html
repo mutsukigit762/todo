@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
-  <link rel="apple-touch-icon" href="apple-touch-icon-todo.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TODO</title>
+<link rel="apple-touch-icon" href="apple-touch-icon-todo.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -13,7 +14,7 @@
     font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
     display: flex;
     justify-content: center;
-    padding: 48px 16px;
+    padding: 48px 16px 80px;
   }
   .wrap { width: 100%; max-width: 480px; }
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
@@ -25,14 +26,18 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.07);
     margin-bottom: 16px;
   }
-  .cat-btns { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-  .cat-btn {
-    padding: 4px 10px; border-radius: 20px; border: none;
-    font-size: 12px; cursor: pointer;
-    background: #f0eeea; color: #666;
-    transition: all 0.15s;
+  .cat-select-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .cat-select {
+    flex: 1;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #f8f8f8;
+    outline: none;
+    font-family: inherit;
   }
-  .cat-btn.active { color: #fff; font-weight: 600; }
   .input-row { display: flex; gap: 8px; align-items: center; }
   #task-input {
     flex: 1; border: none; outline: none;
@@ -47,7 +52,8 @@
     font-size: 20px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
-  .filter-btns { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-area { margin-bottom: 16px; }
+  .filter-btns { display: flex; gap: 6px; flex-wrap: wrap; }
   .filter-btn {
     padding: 5px 12px; border-radius: 20px;
     border: 1.5px solid #ddd;
@@ -74,21 +80,67 @@
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
   }
-  .todo-text {
-    flex: 1; font-size: 14px; color: #1a1a1a;
-  }
+  .todo-text { flex: 1; font-size: 14px; color: #1a1a1a; }
   .todo-item.done .todo-text { text-decoration: line-through; }
   .tag {
     font-size: 11px; padding: 2px 8px;
     border-radius: 10px; font-weight: 500; flex-shrink: 0;
+    background: #f0eeea; color: #888;
   }
+  .tag.colored { }
   .del-btn {
     border: none; background: none; cursor: pointer;
     color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1;
   }
   .empty { text-align: center; color: #bbb; font-size: 13px; padding: 32px 0; }
   .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 16px; }
+
+/* カテゴリ管理 */
+.cat-manage-btn {
+font-size: 12px; color: #aaa; background: none; border: none;
+cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit;
+}
+.modal-overlay {
+display: none; position: fixed; inset: 0;
+background: rgba(0,0,0,0.4); z-index: 100;
+justify-content: center; align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+background: #fff; border-radius: 20px 20px 0 0;
+padding: 24px 20px 40px; width: 100%; max-width: 480px;
+}
+.modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.cat-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.cat-item {
+display: flex; align-items: center; gap: 8px;
+background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
+}
+.cat-color {
+width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+}
+.cat-name { flex: 1; font-size: 14px; }
+.cat-del {
+border: none; background: none; cursor: pointer;
+color: #ccc; font-size: 16px; line-height: 1;
+}
+.add-cat-row { display: flex; gap: 8px; }
+.add-cat-input {
+flex: 1; border: 1.5px solid #e8e8e8; border-radius: 8px;
+padding: 8px 12px; font-size: 14px; outline: none; font-family: inherit;
+}
+.add-cat-btn {
+padding: 8px 16px; border-radius: 8px; border: none;
+background: #1a1a1a; color: #fff; font-size: 14px;
+cursor: pointer; font-family: inherit;
+}
+.modal-close {
+width: 100%; padding: 12px; border-radius: 10px;
+border: none; background: #f0eeea; color: #1a1a1a;
+font-size: 14px; cursor: pointer; margin-top: 16px; font-family: inherit;
+}
 </style>
+
 </head>
 <body>
 <div class="wrap">
@@ -96,33 +148,74 @@
   <div class="subtitle" id="subtitle"></div>
 
   <div class="input-box">
-    <div class="cat-btns" id="cat-btns"></div>
+    <div class="cat-select-row">
+      <select class="cat-select" id="cat-select">
+        <option value="">カテゴリなし</option>
+      </select>
+    </div>
     <div class="input-row">
       <input id="task-input" placeholder="タスクを入力..." />
       <button class="add-btn" onclick="addTodo()">+</button>
     </div>
   </div>
 
-  <div class="filter-btns" id="filter-btns"></div>
+  <div class="filter-area">
+    <div class="filter-btns" id="filter-btns"></div>
+    <button class="cat-manage-btn" onclick="openCatModal()">＋ カテゴリを編集</button>
+  </div>
+
   <div class="todo-list" id="todo-list"></div>
   <div class="count" id="count"></div>
 </div>
 
+<!-- カテゴリ管理モーダル -->
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeCatModal(event)">
+  <div class="modal">
+    <h2>カテゴリを管理</h2>
+    <div class="cat-list" id="cat-list"></div>
+    <div class="add-cat-row">
+      <input class="add-cat-input" id="new-cat-input" placeholder="新しいカテゴリ名..." />
+      <button class="add-cat-btn" onclick="addCategory()">追加</button>
+    </div>
+    <button class="modal-close" onclick="closeCatModal()">閉じる</button>
+  </div>
+</div>
+
 <script>
-const CATEGORIES = ["仕事", "個人", "買い物", "その他"];
-const COLORS = { "仕事": "#4a90a4", "個人": "#7a8fa6", "買い物": "#a0876d", "その他": "#8a8a8a" };
+const STORAGE_KEY = 'todo_v2';
+const CAT_KEY = 'todo_cats_v2';
 
-let todos = JSON.parse(localStorage.getItem('todos') || '[]');
-let selectedCat = "個人";
-let filterCat = "すべて";
+const PALETTE = ['#4a90a4','#a0876d','#7a8fa6','#8a6d9a','#6d9a7a','#a46d4a','#9a7a6d','#6d7a9a'];
 
-function save() { localStorage.setItem('todos', JSON.stringify(todos)); }
+let todos = [];
+let categories = [];
+let filterCat = '__all__';
+
+function load() {
+  try { todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { todos = []; }
+  try { categories = JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch(e) { categories = []; }
+}
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+  localStorage.setItem(CAT_KEY, JSON.stringify(categories));
+}
+
+function catColor(catId) {
+  const idx = categories.findIndex(c => c.id === catId);
+  return idx >= 0 ? PALETTE[idx % PALETTE.length] : null;
+}
+function catName(catId) {
+  const c = categories.find(c => c.id === catId);
+  return c ? c.name : null;
+}
 
 function addTodo() {
   const input = document.getElementById('task-input');
   const text = input.value.trim();
   if (!text) return;
-  todos.push({ id: Date.now(), text, category: selectedCat, done: false });
+  const catId = document.getElementById('cat-select').value || null;
+  todos.push({ id: Date.now(), text, catId, done: false });
   input.value = '';
   save(); render();
 }
@@ -135,65 +228,117 @@ function toggleTodo(id) {
   todos = todos.map(t => t.id === id ? {...t, done: !t.done} : t);
   save(); render();
 }
-
 function deleteTodo(id) {
   todos = todos.filter(t => t.id !== id);
   save(); render();
 }
 
+function addCategory() {
+  const input = document.getElementById('new-cat-input');
+  const name = input.value.trim();
+  if (!name) return;
+  categories.push({ id: Date.now().toString(), name });
+  input.value = '';
+  save(); renderCatModal(); render();
+}
+function deleteCategory(id) {
+  categories = categories.filter(c => c.id !== id);
+  todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
+  save(); renderCatModal(); render();
+}
+
+function openCatModal() {
+  renderCatModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeCatModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+function renderCatModal() {
+  const list = document.getElementById('cat-list');
+  if (categories.length === 0) {
+    list.innerHTML = '<div style="color:#bbb;font-size:13px;text-align:center;padding:8px 0">カテゴリがありません</div>';
+  } else {
+    list.innerHTML = categories.map(c => `
+      <div class="cat-item">
+        <div class="cat-color" style="background:${catColor(c.id)}"></div>
+        <span class="cat-name">${escapeHtml(c.name)}</span>
+        <button class="cat-del" onclick="deleteCategory('${c.id}')">×</button>
+      </div>
+    `).join('');
+  }
+  // selectも更新
+  const sel = document.getElementById('cat-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">カテゴリなし</option>' +
+    categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  sel.value = cur;
+}
+
 function render() {
-  // subtitle
   const remaining = todos.filter(t => !t.done).length;
   document.getElementById('subtitle').textContent =
     todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
 
-  // category buttons
-  document.getElementById('cat-btns').innerHTML = CATEGORIES.map(cat => `
-    <button class="cat-btn${selectedCat===cat?' active':''}"
-      style="${selectedCat===cat?`background:${COLORS[cat]}`:''}"
-      onclick="selectCat('${cat}')">${cat}</button>
+  // filter buttons
+  const filterBtns = document.getElementById('filter-btns');
+  filterBtns.innerHTML = [
+    {id: '__all__', name: 'すべて'},
+    {id: '__none__', name: 'カテゴリなし'},
+    ...categories
+  ].map(c => `
+    <button class="filter-btn${filterCat === c.id ? ' active' : ''}"
+      onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>
   `).join('');
 
-  // filter buttons
-  document.getElementById('filter-btns').innerHTML = ['すべて', ...CATEGORIES].map(cat => `
-    <button class="filter-btn${filterCat===cat?' active':''}"
-      onclick="setFilter('${cat}')">${cat}</button>
-  `).join('');
+  // cat select
+  renderCatModal();
 
   // todo list
-  const filtered = filterCat === 'すべて' ? todos : todos.filter(t => t.category === filterCat);
+  const filtered = todos.filter(t => {
+    if (filterCat === '__all__') return true;
+    if (filterCat === '__none__') return !t.catId;
+    return t.catId === filterCat;
+  });
+
   const list = document.getElementById('todo-list');
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty">タスクがありません</div>';
   } else {
-    list.innerHTML = filtered.map(todo => `
-      <div class="todo-item${todo.done?' done':''}">
-        <div class="check-box"
-          style="border-color:${todo.done?COLORS[todo.category]:'#ccc'};background:${todo.done?COLORS[todo.category]:'transparent'}"
-          onclick="toggleTodo(${todo.id})">
-          ${todo.done?`<svg width="11" height="8" viewBox="0 0 11 8" fill="none">
-            <path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>`:''}
+    list.innerHTML = filtered.map(todo => {
+      const color = todo.catId ? catColor(todo.catId) : null;
+      const name = todo.catId ? catName(todo.catId) : null;
+      return `
+        <div class="todo-item${todo.done ? ' done' : ''}">
+          <div class="check-box"
+            style="border-color:${todo.done ? (color || '#aaa') : '#ccc'};background:${todo.done ? (color || '#aaa') : 'transparent'}"
+            onclick="toggleTodo(${todo.id})">
+            ${todo.done ? `<svg width="11" height="8" viewBox="0 0 11 8" fill="none">
+              <path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>` : ''}
+          </div>
+          <span class="todo-text">${escapeHtml(todo.text)}</span>
+          ${name ? `<span class="tag" style="background:${color}22;color:${color}">${escapeHtml(name)}</span>` : ''}
+          <button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>
         </div>
-        <span class="todo-text">${escapeHtml(todo.text)}</span>
-        <span class="tag" style="background:${COLORS[todo.category]}22;color:${COLORS[todo.category]}">${todo.category}</span>
-        <button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
-  // count
   document.getElementById('count').textContent =
-    todos.length > 0 ? `完了 ${todos.filter(t=>t.done).length} / ${todos.length}` : '';
+    todos.length > 0 ? `完了 ${todos.filter(t => t.done).length} / ${todos.length}` : '';
 }
 
-function selectCat(cat) { selectedCat = cat; render(); }
-function setFilter(cat) { filterCat = cat; render(); }
+function setFilter(id) { filterCat = id; render(); }
 function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-render();
+load(); render();
 </script>
+
 </body>
 </html>
