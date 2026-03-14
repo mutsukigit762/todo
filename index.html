@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TODO</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: #f5f3ef;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+  }
+  .wrap { width: 100%; max-width: 480px; }
+  h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
+  .subtitle { font-size: 13px; color: #999; margin-top: 4px; margin-bottom: 32px; }
+  .input-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    margin-bottom: 16px;
+  }
+  .cat-btns { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .cat-btn {
+    padding: 4px 10px; border-radius: 20px; border: none;
+    font-size: 12px; cursor: pointer;
+    background: #f0eeea; color: #666;
+    transition: all 0.15s;
+  }
+  .cat-btn.active { color: #fff; font-weight: 600; }
+  .input-row { display: flex; gap: 8px; align-items: center; }
+  #task-input {
+    flex: 1; border: none; outline: none;
+    font-size: 15px; color: #1a1a1a;
+    background: transparent; padding: 4px 0;
+    font-family: inherit;
+  }
+  #task-input::placeholder { color: #bbb; }
+  .add-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: none; background: #1a1a1a; color: #fff;
+    font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .filter-btns { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 5px 12px; border-radius: 20px;
+    border: 1.5px solid #ddd;
+    background: transparent; color: #888;
+    font-size: 12px; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .filter-btn.active {
+    border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600;
+  }
+  .todo-list { display: flex; flex-direction: column; gap: 6px; }
+  .todo-item {
+    background: #fff; border-radius: 10px;
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: opacity 0.2s;
+  }
+  .todo-item.done { opacity: 0.5; }
+  .check-box {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 2px solid #ccc;
+    cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .todo-text {
+    flex: 1; font-size: 14px; color: #1a1a1a;
+  }
+  .todo-item.done .todo-text { text-decoration: line-through; }
+  .tag {
+    font-size: 11px; padding: 2px 8px;
+    border-radius: 10px; font-weight: 500; flex-shrink: 0;
+  }
+  .del-btn {
+    border: none; background: none; cursor: pointer;
+    color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1;
+  }
+  .empty { text-align: center; color: #bbb; font-size: 13px; padding: 32px 0; }
+  .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TODO</h1>
+  <div class="subtitle" id="subtitle"></div>
+
+  <div class="input-box">
+    <div class="cat-btns" id="cat-btns"></div>
+    <div class="input-row">
+      <input id="task-input" placeholder="タスクを入力..." />
+      <button class="add-btn" onclick="addTodo()">+</button>
+    </div>
+  </div>
+
+  <div class="filter-btns" id="filter-btns"></div>
+  <div class="todo-list" id="todo-list"></div>
+  <div class="count" id="count"></div>
+</div>
+
+<script>
+const CATEGORIES = ["仕事", "個人", "買い物", "その他"];
+const COLORS = { "仕事": "#4a90a4", "個人": "#7a8fa6", "買い物": "#a0876d", "その他": "#8a8a8a" };
+
+let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+let selectedCat = "個人";
+let filterCat = "すべて";
+
+function save() { localStorage.setItem('todos', JSON.stringify(todos)); }
+
+function addTodo() {
+  const input = document.getElementById('task-input');
+  const text = input.value.trim();
+  if (!text) return;
+  todos.push({ id: Date.now(), text, category: selectedCat, done: false });
+  input.value = '';
+  save(); render();
+}
+
+document.getElementById('task-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTodo();
+});
+
+function toggleTodo(id) {
+  todos = todos.map(t => t.id === id ? {...t, done: !t.done} : t);
+  save(); render();
+}
+
+function deleteTodo(id) {
+  todos = todos.filter(t => t.id !== id);
+  save(); render();
+}
+
+function render() {
+  // subtitle
+  const remaining = todos.filter(t => !t.done).length;
+  document.getElementById('subtitle').textContent =
+    todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
+
+  // category buttons
+  document.getElementById('cat-btns').innerHTML = CATEGORIES.map(cat => `
+    <button class="cat-btn${selectedCat===cat?' active':''}"
+      style="${selectedCat===cat?`background:${COLORS[cat]}`:''}"
+      onclick="selectCat('${cat}')">${cat}</button>
+  `).join('');
+
+  // filter buttons
+  document.getElementById('filter-btns').innerHTML = ['すべて', ...CATEGORIES].map(cat => `
+    <button class="filter-btn${filterCat===cat?' active':''}"
+      onclick="setFilter('${cat}')">${cat}</button>
+  `).join('');
+
+  // todo list
+  const filtered = filterCat === 'すべて' ? todos : todos.filter(t => t.category === filterCat);
+  const list = document.getElementById('todo-list');
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">タスクがありません</div>';
+  } else {
+    list.innerHTML = filtered.map(todo => `
+      <div class="todo-item${todo.done?' done':''}">
+        <div class="check-box"
+          style="border-color:${todo.done?COLORS[todo.category]:'#ccc'};background:${todo.done?COLORS[todo.category]:'transparent'}"
+          onclick="toggleTodo(${todo.id})">
+          ${todo.done?`<svg width="11" height="8" viewBox="0 0 11 8" fill="none">
+            <path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>`:''}
+        </div>
+        <span class="todo-text">${escapeHtml(todo.text)}</span>
+        <span class="tag" style="background:${COLORS[todo.category]}22;color:${COLORS[todo.category]}">${todo.category}</span>
+        <button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>
+      </div>
+    `).join('');
+  }
+
+  // count
+  document.getElementById('count').textContent =
+    todos.length > 0 ? `完了 ${todos.filter(t=>t.done).length} / ${todos.length}` : '';
+}
+
+function selectCat(cat) { selectedCat = cat; render(); }
+function setFilter(cat) { filterCat = cat; render(); }
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+render();
+</script>
+</body>
+</html>
