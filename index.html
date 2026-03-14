@@ -82,12 +82,8 @@
   }
   .todo-text { flex: 1; font-size: 14px; color: #1a1a1a; }
   .todo-item.done .todo-text { text-decoration: line-through; }
-  .tag {
-    font-size: 11px; padding: 2px 8px;
-    border-radius: 10px; font-weight: 500; flex-shrink: 0;
-    background: #f0eeea; color: #888;
-  }
-  .tag.colored { }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; }
+  .tag.no-cat { color: #ccc; background: #f5f5f5; }
   .del-btn {
     border: none; background: none; cursor: pointer;
     color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1;
@@ -173,8 +169,15 @@ touch-action: manipulation;
   <div class="count" id="count"></div>
 </div>
 
-<!-- カテゴリ管理モーダル -->
+<!-- カテゴリ変更モーダル -->
 
+<div class="modal-overlay" id="change-cat-overlay" onclick="closeChangeCatModal(event)">
+  <div class="modal">
+    <h2>カテゴリを変更</h2>
+    <div class="cat-list" id="change-cat-list"></div>
+    <button class="modal-close" onclick="closeChangeCatModal()">閉じる</button>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-overlay" onclick="closeCatModal(event)">
   <div class="modal">
     <h2>カテゴリを管理</h2>
@@ -246,6 +249,39 @@ function addCategory() {
   input.value = '';
   save(); renderCatModal(); render();
 }
+let changeCatTargetId = null;
+function openChangeCatModal(todoId) {
+  changeCatTargetId = todoId;
+  const list = document.getElementById('change-cat-list');
+  list.innerHTML = [
+    {id: null, name: 'カテゴリなし'},
+    ...categories
+  ].map(c => {
+    const color = c.id ? catColor(c.id) : null;
+    const todo = todos.find(t => t.id === todoId);
+    const active = todo && todo.catId === c.id;
+    return `
+      <div class="cat-item" onclick="changeTodoCat('${c.id}')"
+        style="cursor:pointer;${active ? 'background:#f0f0f0' : ''}">
+        <div class="cat-color" style="background:${color || '#ddd'}"></div>
+        <span class="cat-name" style="cursor:pointer">${escapeHtml(c.name)}</span>
+        ${active ? '<span style="color:#aaa;font-size:12px">✓</span>' : ''}
+      </div>
+    `;
+  }).join('');
+  document.getElementById('change-cat-overlay').classList.add('open');
+}
+function changeTodoCat(catId) {
+  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId === 'null' ? null : catId} : t);
+  save(); render();
+  closeChangeCatModal();
+}
+function closeChangeCatModal(e) {
+  if (!e || e.target === document.getElementById('change-cat-overlay')) {
+    document.getElementById('change-cat-overlay').classList.remove('open');
+  }
+}
+
 function renameCategory(id, name) {
   name = name.trim();
   if (!name) return;
@@ -334,7 +370,9 @@ function render() {
             </svg>` : ''}
           </div>
           <span class="todo-text">${escapeHtml(todo.text)}</span>
-          ${name ? `<span class="tag" style="background:${color}22;color:${color}">${escapeHtml(name)}</span>` : ''}
+          <span class="tag${name ? '' : ' no-cat'}"
+            style="${name ? `background:${color}22;color:${color}` : ''}"
+            onclick="openChangeCatModal(${todo.id})">${name ? escapeHtml(name) : '未分類'}</span>
           <button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>
         </div>
       `;
