@@ -358,7 +358,7 @@ function render() {
     if (filterCat === '__all__') return true;
     if (filterCat === '__none__') return !t.catId;
     return t.catId === filterCat;
-  });
+  }).reverse();
 
   const list = document.getElementById('todo-list');
   if (filtered.length === 0) {
