@@ -353,7 +353,8 @@ function _dragEnd() {
   save();
   _drag.ghost.remove();
   _drag.placeholder.remove();
-  _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0 };
+  if (_drag._hiddenItem) _drag._hiddenItem.remove();
+  _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0, _hiddenItem: null };
   renderCatModal();
   render();
 }
@@ -382,7 +383,10 @@ function initDragSort() {
       _drag.placeholder.className = 'cat-item drag-placeholder';
       _drag.placeholder.style.height = rect.height + 'px';
       item.parentNode.insertBefore(_drag.placeholder, item);
-      item.remove();
+      item.style.visibility = 'hidden';
+      item.style.position = 'absolute';
+      item.style.pointerEvents = 'none';
+      _drag._hiddenItem = item;
 
       _drag.ghost = document.createElement('div');
       _drag.ghost.className = 'drag-ghost';
