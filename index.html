@@ -367,6 +367,7 @@ function initDragSort() {
 
   list.querySelectorAll('[data-handle]').forEach(handle => {
     handle.addEventListener('touchstart', e => {
+      e.preventDefault();
       const item = handle.closest('.cat-item');
       if (!item) return;
       const touch = e.touches[0];
@@ -394,7 +395,6 @@ function initDragSort() {
         <div class="cat-color" style="background:${cat?.color}"></div>
         <span style="font-size:16px;font-family:inherit">${escapeHtml(cat?.name||'')}</span>`;
       document.body.appendChild(_drag.ghost);
-      e.preventDefault();
     }, { passive: false });
   });
 }
