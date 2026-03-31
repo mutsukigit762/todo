@@ -20,30 +20,19 @@
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
   .subtitle { font-size: 13px; color: #999; margin-top: 4px; margin-bottom: 32px; }
   .input-box {
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    margin-bottom: 16px;
+    background: #fff; border-radius: 12px;
+    padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px;
   }
   .cat-select-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
   .cat-select {
-    flex: 1;
-    border: 1.5px solid #e8e8e8;
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 16px;
-    color: #1a1a1a;
-    background: #f8f8f8;
-    outline: none;
-    font-family: inherit;
+    flex: 1; border: 1.5px solid #e8e8e8; border-radius: 8px;
+    padding: 6px 10px; font-size: 16px; color: #1a1a1a;
+    background: #f8f8f8; outline: none; font-family: inherit;
   }
   .input-row { display: flex; gap: 8px; align-items: center; }
   #task-input {
-    flex: 1; border: none; outline: none;
-    font-size: 16px; color: #1a1a1a;
-    background: transparent; padding: 4px 0;
-    font-family: inherit;
+    flex: 1; border: none; outline: none; font-size: 16px; color: #1a1a1a;
+    background: transparent; padding: 4px 0; font-family: inherit;
   }
   #task-input::placeholder { color: #bbb; }
   .add-btn {
@@ -55,46 +44,35 @@
   .filter-area { margin-bottom: 16px; }
   .filter-btns { display: flex; gap: 6px; flex-wrap: wrap; }
   .filter-btn {
-    padding: 5px 12px; border-radius: 20px;
-    border: 1.5px solid #ddd;
-    background: transparent; color: #888;
-    font-size: 12px; cursor: pointer;
+    padding: 5px 12px; border-radius: 20px; border: 1.5px solid #ddd;
+    background: transparent; color: #888; font-size: 12px; cursor: pointer;
     transition: all 0.15s; font-family: inherit;
   }
-  .filter-btn.active {
-    border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600;
-  }
+  .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
   .todo-list { display: flex; flex-direction: column; gap: 6px; }
   .todo-item {
-    background: #fff; border-radius: 10px;
-    padding: 12px 14px;
+    background: #fff; border-radius: 10px; padding: 12px 14px;
     display: flex; align-items: center; gap: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    transition: opacity 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: opacity 0.2s;
   }
   .todo-item.done { opacity: 0.5; }
   .check-box {
-    width: 20px; height: 20px; border-radius: 5px;
-    border: 2px solid #ccc;
+    width: 20px; height: 20px; border-radius: 5px; border: 2px solid #ccc;
     cursor: pointer; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
   }
-  .todo-text { flex: 1; font-size: 16px; color: #1a1a1a; border: none; outline: none; background: transparent; font-family: inherit; padding: 0; min-width: 0; }
+  .todo-text {
+    flex: 1; font-size: 16px; color: #1a1a1a; border: none; outline: none;
+    background: transparent; font-family: inherit; padding: 0; min-width: 0;
+  }
   .todo-item.done .todo-text { text-decoration: line-through; color: #aaa; }
   .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; }
   .tag.no-cat { color: #ccc; background: #f5f5f5; }
-  .del-btn {
-    border: none; background: none; cursor: pointer;
-    color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1;
-  }
+  .del-btn { border: none; background: none; cursor: pointer; color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1; }
   .empty { text-align: center; color: #bbb; font-size: 16px; padding: 32px 0; }
   .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 16px; }
+  .cat-manage-btn { font-size: 12px; color: #aaa; background: none; border: none; cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit; }
 
-.cat-manage-btn {
-font-size: 12px; color: #aaa; background: none; border: none;
-cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit;
-}
 .modal-overlay {
 display: none; position: fixed; inset: 0;
 background: rgba(0,0,0,0.4); z-index: 100;
@@ -111,36 +89,23 @@ max-height: 80vh; overflow-y: auto;
 .cat-item {
 display: flex; align-items: center; gap: 8px;
 background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
-transition: box-shadow 0.15s, opacity 0.15s;
 user-select: none;
 }
-.cat-item.dragging {
-opacity: 0.5;
-box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-.cat-item.drag-over {
-box-shadow: 0 0 0 2px #4a90a4;
+.cat-item.drag-placeholder {
+background: #e8e6e0; opacity: 0.5; border: 2px dashed #ccc;
 }
 .drag-handle {
-color: #ccc; font-size: 16px; cursor: grab;
-padding: 0 4px; flex-shrink: 0; touch-action: none;
 display: flex; flex-direction: column; gap: 3px;
+padding: 0 4px; flex-shrink: 0; touch-action: none; cursor: grab;
 }
-.drag-handle span {
-display: block; width: 14px; height: 2px; background: #ccc; border-radius: 1px;
-}
-.cat-color {
-width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
-}
+.drag-handle span { display: block; width: 14px; height: 2px; background: #ccc; border-radius: 1px; }
+.cat-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .cat-name {
 flex: 1; font-size: 16px; border: none; background: transparent;
 outline: none; font-family: inherit; cursor: text; padding: 0;
 }
 .cat-name:focus { border-bottom: 1.5px solid #ccc; }
-.cat-del {
-border: none; background: none; cursor: pointer;
-color: #ccc; font-size: 16px; line-height: 1;
-}
+.cat-del { border: none; background: none; cursor: pointer; color: #ccc; font-size: 16px; line-height: 1; }
 .add-cat-row { display: flex; gap: 8px; }
 .add-cat-input {
 flex: 1; border: 1.5px solid #e8e8e8; border-radius: 8px;
@@ -148,13 +113,17 @@ padding: 8px 12px; font-size: 16px; outline: none; font-family: inherit;
 }
 .add-cat-btn {
 padding: 8px 16px; border-radius: 8px; border: none;
-background: #1a1a1a; color: #fff; font-size: 16px;
-cursor: pointer; font-family: inherit;
+background: #1a1a1a; color: #fff; font-size: 16px; cursor: pointer; font-family: inherit;
 }
 .modal-close {
-width: 100%; padding: 12px; border-radius: 10px;
-border: none; background: #f0eeea; color: #1a1a1a;
-font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
+width: 100%; padding: 12px; border-radius: 10px; border: none;
+background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
+}
+.drag-ghost {
+position: fixed; z-index: 999; pointer-events: none;
+background: #fff; border-radius: 8px; padding: 10px 12px;
+box-shadow: 0 8px 28px rgba(0,0,0,0.2);
+display: flex; align-items: center; gap: 8px;
 }
 </style>
 
@@ -163,7 +132,6 @@ font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
 <div class="wrap">
   <h1>TODO</h1>
   <div class="subtitle" id="subtitle"></div>
-
   <div class="input-box">
     <div class="cat-select-row">
       <select class="cat-select" id="cat-select">
@@ -175,17 +143,13 @@ font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
       <button class="add-btn" onclick="addTodo()">+</button>
     </div>
   </div>
-
   <div class="filter-area">
     <div class="filter-btns" id="filter-btns"></div>
     <button class="cat-manage-btn" onclick="openCatModal()">＋ カテゴリを編集</button>
   </div>
-
   <div class="todo-list" id="todo-list"></div>
   <div class="count" id="count"></div>
 </div>
-
-<!-- カテゴリ変更モーダル -->
 
 <div class="modal-overlay" id="change-cat-overlay" onclick="closeChangeCatModal(event)">
   <div class="modal">
@@ -194,8 +158,6 @@ font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
     <button class="modal-close" onclick="closeChangeCatModal()">閉じる</button>
   </div>
 </div>
-
-<!-- カテゴリ管理モーダル -->
 
 <div class="modal-overlay" id="modal-overlay" onclick="closeCatModal(event)">
   <div class="modal">
@@ -221,6 +183,11 @@ let filterCat = '__all__';
 function load() {
   try { todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { todos = []; }
   try { categories = JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch(e) { categories = []; }
+  // 色をidに固定で紐づける
+  categories = categories.map((c, i) => ({
+    ...c,
+    color: c.color || PALETTE[i % PALETTE.length]
+  }));
 }
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
@@ -228,8 +195,8 @@ function save() {
 }
 
 function catColor(catId) {
-  const idx = categories.findIndex(c => c.id === catId);
-  return idx >= 0 ? PALETTE[idx % PALETTE.length] : null;
+  const c = categories.find(c => c.id === catId);
+  return c ? c.color : null;
 }
 function catName(catId) {
   const c = categories.find(c => c.id === catId);
@@ -269,7 +236,9 @@ function addCategory() {
   const input = document.getElementById('new-cat-input');
   const name = input.value.trim();
   if (!name) return;
-  categories.push({ id: Date.now().toString(), name });
+  const usedColors = categories.map(c => c.color);
+  const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[categories.length % PALETTE.length];
+  categories.push({ id: Date.now().toString(), name, color });
   input.value = '';
   save(); renderCatModal(); render();
 }
@@ -285,50 +254,41 @@ function deleteCategory(id) {
   save(); renderCatModal(); render();
 }
 
-// カテゴリ変更
 let changeCatTargetId = null;
 function openChangeCatModal(todoId) {
   changeCatTargetId = todoId;
   const list = document.getElementById('change-cat-list');
   list.innerHTML = [
-    {id: null, name: 'カテゴリなし'},
+    {id: null, name: 'カテゴリなし', color: '#ddd'},
     ...categories
   ].map(c => {
-    const color = c.id ? catColor(c.id) : null;
     const todo = todos.find(t => t.id === todoId);
     const active = todo && todo.catId === c.id;
     return `
-      <div class="cat-item" onclick="changeTodoCat('${c.id}')"
-        style="cursor:pointer;${active ? 'background:#f0f0f0' : ''}">
-        <div class="cat-color" style="background:${color || '#ddd'}"></div>
+      <div class="cat-item" onclick="changeTodoCat('${c.id}')" style="cursor:pointer;${active ? 'background:#f0f0f0' : ''}">
+        <div class="cat-color" style="background:${c.color || '#ddd'}"></div>
         <span class="cat-name" style="cursor:pointer">${escapeHtml(c.name)}</span>
         ${active ? '<span style="color:#aaa;font-size:12px">✓</span>' : ''}
-      </div>
-    `;
+      </div>`;
   }).join('');
   document.getElementById('change-cat-overlay').classList.add('open');
 }
 function changeTodoCat(catId) {
   todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId === 'null' ? null : catId} : t);
-  save(); render();
-  closeChangeCatModal();
+  save(); render(); closeChangeCatModal();
 }
 function closeChangeCatModal(e) {
-  if (!e || e.target === document.getElementById('change-cat-overlay')) {
+  if (!e || e.target === document.getElementById('change-cat-overlay'))
     document.getElementById('change-cat-overlay').classList.remove('open');
-  }
 }
 
-// カテゴリ管理モーダル
 function openCatModal() {
   renderCatModal();
   document.getElementById('modal-overlay').classList.add('open');
-  initDragSort();
 }
 function closeCatModal(e) {
-  if (!e || e.target === document.getElementById('modal-overlay')) {
+  if (!e || e.target === document.getElementById('modal-overlay'))
     document.getElementById('modal-overlay').classList.remove('open');
-  }
 }
 
 function renderCatModal() {
@@ -338,16 +298,13 @@ function renderCatModal() {
   } else {
     list.innerHTML = categories.map(c => `
       <div class="cat-item" data-id="${c.id}">
-        <div class="drag-handle" data-handle>
-          <span></span><span></span><span></span>
-        </div>
-        <div class="cat-color" style="background:${catColor(c.id)}"></div>
+        <div class="drag-handle" data-handle="true"><span></span><span></span><span></span></div>
+        <div class="cat-color" style="background:${c.color}"></div>
         <input class="cat-name" value="${escapeHtml(c.name)}"
           onchange="renameCategory('${c.id}', this.value)"
           onblur="renameCategory('${c.id}', this.value)" />
         <button class="cat-del" onclick="deleteCategory('${c.id}')">×</button>
-      </div>
-    `).join('');
+      </div>`).join('');
   }
   const sel = document.getElementById('cat-select');
   const cur = sel.value;
@@ -357,63 +314,97 @@ function renderCatModal() {
   initDragSort();
 }
 
-// ドラッグ並べ替え（タッチ対応）
+// タッチドラッグ並べ替え
 function initDragSort() {
   const list = document.getElementById('cat-list');
   if (!list) return;
-  let dragEl = null;
-  let startY = 0;
-  let startIdx = 0;
 
-  list.querySelectorAll('[data-handle]').forEach(handle => {
-    handle.addEventListener('touchstart', e => {
-      const item = handle.closest('.cat-item');
-      dragEl = item;
-      startY = e.touches[0].clientY;
-      startIdx = [...list.children].indexOf(item);
-      item.classList.add('dragging');
-      e.preventDefault();
-    }, { passive: false });
-  });
+  let ghost = null;
+  let placeholder = null;
+  let dragId = null;
+  let offsetX = 0, offsetY = 0;
+  let listWidth = 0;
 
-  list.addEventListener('touchmove', e => {
-    if (!dragEl) return;
+  const onTouchStart = e => {
+    const handle = e.target.closest('[data-handle]');
+    if (!handle) return;
+    const item = handle.closest('.cat-item');
+    if (!item) return;
+    dragId = item.dataset.id;
+
+    const touch = e.touches[0];
+    const rect = item.getBoundingClientRect();
+    offsetX = touch.clientX - rect.left;
+    offsetY = touch.clientY - rect.top;
+    listWidth = rect.width;
+
+    // プレースホルダー
+    placeholder = document.createElement('div');
+    placeholder.className = 'cat-item drag-placeholder';
+    placeholder.style.height = rect.height + 'px';
+    item.parentNode.insertBefore(placeholder, item);
+    item.remove();
+
+    // ゴースト
+    ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
+    ghost.style.width = listWidth + 'px';
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+    ghost.innerHTML = `
+      <div class="drag-handle"><span></span><span></span><span></span></div>
+      <div class="cat-color" style="background:${categories.find(c=>c.id===dragId)?.color}"></div>
+      <span style="font-size:16px;font-family:inherit">${escapeHtml(categories.find(c=>c.id===dragId)?.name||'')}</span>
+    `;
+    document.body.appendChild(ghost);
     e.preventDefault();
-    const y = e.touches[0].clientY;
-    const items = [...list.querySelectorAll('.cat-item:not(.dragging)')];
-    let target = null;
-    for (const item of items) {
-      const rect = item.getBoundingClientRect();
-      if (y < rect.top + rect.height / 2) { target = item; break; }
-    }
-    items.forEach(i => i.classList.remove('drag-over'));
-    if (target) target.classList.add('drag-over');
-  }, { passive: false });
+  };
 
-  list.addEventListener('touchend', e => {
-    if (!dragEl) return;
-    const y = e.changedTouches[0].clientY;
-    const items = [...list.querySelectorAll('.cat-item:not(.dragging)')];
-    let targetIdx = categories.length;
-    for (let i = 0; i < items.length; i++) {
-      const rect = items[i].getBoundingClientRect();
-      if (y < rect.top + rect.height / 2) { targetIdx = i; break; }
-    }
-    dragEl.classList.remove('dragging');
-    items.forEach(i => i.classList.remove('drag-over'));
+  const onTouchMove = e => {
+    if (!ghost) return;
+    const touch = e.touches[0];
+    ghost.style.left = (touch.clientX - offsetX) + 'px';
+    ghost.style.top = (touch.clientY - offsetY) + 'px';
 
-    // 並べ替え
-    const dragId = dragEl.dataset.id;
-    const newCats = categories.filter(c => c.id !== dragId);
-    const dragCat = categories.find(c => c.id === dragId);
-    const insertIdx = targetIdx > startIdx ? targetIdx - 1 : targetIdx;
-    newCats.splice(insertIdx, 0, dragCat);
-    categories = newCats;
+    const siblings = [...list.querySelectorAll('.cat-item:not(.drag-placeholder)')];
+    let inserted = false;
+    for (const sib of siblings) {
+      const r = sib.getBoundingClientRect();
+      if (touch.clientY < r.top + r.height / 2) {
+        list.insertBefore(placeholder, sib);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) list.appendChild(placeholder);
+    e.preventDefault();
+  };
+
+  const onTouchEnd = () => {
+    if (!ghost) return;
+    const allEls = [...list.children];
+    const newOrder = [];
+    for (const el of allEls) {
+      if (el === placeholder) {
+        const cat = categories.find(c => c.id === dragId);
+        if (cat) newOrder.push(cat);
+      } else if (el.dataset && el.dataset.id) {
+        const cat = categories.find(c => c.id === el.dataset.id);
+        if (cat) newOrder.push(cat);
+      }
+    }
+    if (newOrder.length === categories.length) categories = newOrder;
     save();
+    ghost.remove(); ghost = null;
+    placeholder.remove(); placeholder = null;
+    dragId = null;
     renderCatModal();
     render();
-    dragEl = null;
-  });
+  };
+
+  list.addEventListener('touchstart', onTouchStart, { passive: false });
+  document.addEventListener('touchmove', onTouchMove, { passive: false });
+  document.addEventListener('touchend', onTouchEnd);
 }
 
 function render() {
@@ -421,8 +412,7 @@ function render() {
   document.getElementById('subtitle').textContent =
     todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
 
-  const filterBtns = document.getElementById('filter-btns');
-  filterBtns.innerHTML = [
+  document.getElementById('filter-btns').innerHTML = [
     {id: '__all__', name: 'すべて'},
     {id: '__none__', name: 'カテゴリなし'},
     ...categories
@@ -449,26 +439,23 @@ function render() {
       return `
         <div class="todo-item${todo.done ? ' done' : ''}">
           <div class="check-box"
-            style="border-color:${todo.done ? (color || '#aaa') : '#ccc'};background:${todo.done ? (color || '#aaa') : 'transparent'}"
+            style="border-color:${todo.done?(color||'#aaa'):'#ccc'};background:${todo.done?(color||'#aaa'):'transparent'}"
             onclick="toggleTodo(${todo.id})">
-            ${todo.done ? `<svg width="11" height="8" viewBox="0 0 11 8" fill="none">
-              <path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>` : ''}
+            ${todo.done?`<svg width="11" height="8" viewBox="0 0 11 8" fill="none"><path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
           </div>
           <input class="todo-text" value="${escapeHtml(todo.text)}"
             onchange="editTodoText(${todo.id}, this.value)"
             onblur="editTodoText(${todo.id}, this.value)" />
-          <span class="tag${name ? '' : ' no-cat'}"
-            style="${name ? `background:${color}22;color:${color}` : ''}"
-            onclick="openChangeCatModal(${todo.id})">${name ? escapeHtml(name) : '未分類'}</span>
+          <span class="tag${name?'':' no-cat'}"
+            style="${name?`background:${color}22;color:${color}`:''}"
+            onclick="openChangeCatModal(${todo.id})">${name?escapeHtml(name):'未分類'}</span>
           <button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>
-        </div>
-      `;
+        </div>`;
     }).join('');
   }
 
   document.getElementById('count').textContent =
-    todos.length > 0 ? `完了 ${todos.filter(t => t.done).length} / ${todos.length}` : '';
+    todos.length > 0 ? `完了 ${todos.filter(t=>t.done).length} / ${todos.length}` : '';
 }
 
 function setFilter(id) { filterCat = id; render(); }
