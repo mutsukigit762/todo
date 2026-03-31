@@ -315,96 +315,88 @@ function renderCatModal() {
 }
 
 // タッチドラッグ並べ替え
+// ドラッグ状態（グローバル）
+let _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0 };
+
+function _dragMove(e) {
+  if (!_drag.ghost) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  _drag.ghost.style.left = (touch.clientX - _drag.offsetX) + 'px';
+  _drag.ghost.style.top = (touch.clientY - _drag.offsetY) + 'px';
+  const siblings = [..._drag.list.querySelectorAll('.cat-item:not(.drag-placeholder)')];
+  let inserted = false;
+  for (const sib of siblings) {
+    const r = sib.getBoundingClientRect();
+    if (touch.clientY < r.top + r.height / 2) {
+      _drag.list.insertBefore(_drag.placeholder, sib);
+      inserted = true; break;
+    }
+  }
+  if (!inserted) _drag.list.appendChild(_drag.placeholder);
+}
+
+function _dragEnd() {
+  if (!_drag.ghost) return;
+  const allEls = [..._drag.list.children];
+  const newOrder = [];
+  for (const el of allEls) {
+    if (el === _drag.placeholder) {
+      const cat = categories.find(c => c.id === _drag.dragId);
+      if (cat) newOrder.push(cat);
+    } else if (el.dataset && el.dataset.id) {
+      const cat = categories.find(c => c.id === el.dataset.id);
+      if (cat) newOrder.push(cat);
+    }
+  }
+  if (newOrder.length === categories.length) categories = newOrder;
+  save();
+  _drag.ghost.remove();
+  _drag.placeholder.remove();
+  _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0 };
+  renderCatModal();
+  render();
+}
+
+document.addEventListener('touchmove', _dragMove, { passive: false });
+document.addEventListener('touchend', _dragEnd);
+
 function initDragSort() {
   const list = document.getElementById('cat-list');
   if (!list) return;
 
-  let ghost = null;
-  let placeholder = null;
-  let dragId = null;
-  let offsetX = 0, offsetY = 0;
-  let listWidth = 0;
+  list.querySelectorAll('[data-handle]').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const item = handle.closest('.cat-item');
+      if (!item) return;
+      const touch = e.touches[0];
+      const rect = item.getBoundingClientRect();
 
-  const onTouchStart = e => {
-    const handle = e.target.closest('[data-handle]');
-    if (!handle) return;
-    const item = handle.closest('.cat-item');
-    if (!item) return;
-    dragId = item.dataset.id;
+      _drag.dragId = item.dataset.id;
+      _drag.list = list;
+      _drag.offsetX = touch.clientX - rect.left;
+      _drag.offsetY = touch.clientY - rect.top;
 
-    const touch = e.touches[0];
-    const rect = item.getBoundingClientRect();
-    offsetX = touch.clientX - rect.left;
-    offsetY = touch.clientY - rect.top;
-    listWidth = rect.width;
+      _drag.placeholder = document.createElement('div');
+      _drag.placeholder.className = 'cat-item drag-placeholder';
+      _drag.placeholder.style.height = rect.height + 'px';
+      item.parentNode.insertBefore(_drag.placeholder, item);
+      item.remove();
 
-    // プレースホルダー
-    placeholder = document.createElement('div');
-    placeholder.className = 'cat-item drag-placeholder';
-    placeholder.style.height = rect.height + 'px';
-    item.parentNode.insertBefore(placeholder, item);
-    item.remove();
-
-    // ゴースト
-    ghost = document.createElement('div');
-    ghost.className = 'drag-ghost';
-    ghost.style.width = listWidth + 'px';
-    ghost.style.left = rect.left + 'px';
-    ghost.style.top = rect.top + 'px';
-    ghost.innerHTML = `
-      <div class="drag-handle"><span></span><span></span><span></span></div>
-      <div class="cat-color" style="background:${categories.find(c=>c.id===dragId)?.color}"></div>
-      <span style="font-size:16px;font-family:inherit">${escapeHtml(categories.find(c=>c.id===dragId)?.name||'')}</span>
-    `;
-    document.body.appendChild(ghost);
-    e.preventDefault();
-  };
-
-  const onTouchMove = e => {
-    if (!ghost) return;
-    const touch = e.touches[0];
-    ghost.style.left = (touch.clientX - offsetX) + 'px';
-    ghost.style.top = (touch.clientY - offsetY) + 'px';
-
-    const siblings = [...list.querySelectorAll('.cat-item:not(.drag-placeholder)')];
-    let inserted = false;
-    for (const sib of siblings) {
-      const r = sib.getBoundingClientRect();
-      if (touch.clientY < r.top + r.height / 2) {
-        list.insertBefore(placeholder, sib);
-        inserted = true;
-        break;
-      }
-    }
-    if (!inserted) list.appendChild(placeholder);
-    e.preventDefault();
-  };
-
-  const onTouchEnd = () => {
-    if (!ghost) return;
-    const allEls = [...list.children];
-    const newOrder = [];
-    for (const el of allEls) {
-      if (el === placeholder) {
-        const cat = categories.find(c => c.id === dragId);
-        if (cat) newOrder.push(cat);
-      } else if (el.dataset && el.dataset.id) {
-        const cat = categories.find(c => c.id === el.dataset.id);
-        if (cat) newOrder.push(cat);
-      }
-    }
-    if (newOrder.length === categories.length) categories = newOrder;
-    save();
-    ghost.remove(); ghost = null;
-    placeholder.remove(); placeholder = null;
-    dragId = null;
-    renderCatModal();
-    render();
-  };
-
-  list.addEventListener('touchstart', onTouchStart, { passive: false });
-  document.addEventListener('touchmove', onTouchMove, { passive: false });
-  document.addEventListener('touchend', onTouchEnd);
+      _drag.ghost = document.createElement('div');
+      _drag.ghost.className = 'drag-ghost';
+      _drag.ghost.style.width = rect.width + 'px';
+      _drag.ghost.style.left = rect.left + 'px';
+      _drag.ghost.style.top = rect.top + 'px';
+      const cat = categories.find(c => c.id === _drag.dragId);
+      _drag.ghost.innerHTML = `
+        <div class="drag-handle"><span></span><span></span><span></span></div>
+        <div class="cat-color" style="background:${cat?.color}"></div>
+        <span style="font-size:16px;font-family:inherit">${escapeHtml(cat?.name||'')}</span>`;
+      document.body.appendChild(_drag.ghost);
+      e.preventDefault();
+    }, { passive: false });
+  });
 }
 
 function render() {
