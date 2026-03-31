@@ -274,23 +274,29 @@ function openChangeCatModal(todoId) {
       </div>`;
   }).join('');
   document.getElementById('change-cat-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 function changeTodoCat(catId) {
   todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId === 'null' ? null : catId} : t);
   save(); render(); closeChangeCatModal();
 }
 function closeChangeCatModal(e) {
-  if (!e || e.target === document.getElementById('change-cat-overlay'))
+  if (!e || e.target === document.getElementById('change-cat-overlay')) {
     document.getElementById('change-cat-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
 }
 
 function openCatModal() {
   renderCatModal();
   document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 function closeCatModal(e) {
-  if (!e || e.target === document.getElementById('modal-overlay'))
+  if (!e || e.target === document.getElementById('modal-overlay')) {
     document.getElementById('modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
 }
 
 function renderCatModal() {
