@@ -54,7 +54,7 @@
   }
   .filter-area { margin-bottom: 16px; }
   .filter-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-  .filter-btn { font-size: 12px;
+  .filter-btn {
     padding: 5px 12px; border-radius: 20px;
     border: 1.5px solid #ddd;
     background: transparent; color: #888;
@@ -91,7 +91,6 @@
   .empty { text-align: center; color: #bbb; font-size: 16px; padding: 32px 0; }
   .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 16px; }
 
-/* カテゴリ管理 */
 .cat-manage-btn {
 font-size: 12px; color: #aaa; background: none; border: none;
 cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit;
@@ -105,12 +104,30 @@ justify-content: center; align-items: flex-end;
 .modal {
 background: #fff; border-radius: 20px 20px 0 0;
 padding: 24px 20px 40px; width: 100%; max-width: 480px;
+max-height: 80vh; overflow-y: auto;
 }
 .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
 .cat-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .cat-item {
 display: flex; align-items: center; gap: 8px;
 background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
+transition: box-shadow 0.15s, opacity 0.15s;
+user-select: none;
+}
+.cat-item.dragging {
+opacity: 0.5;
+box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.cat-item.drag-over {
+box-shadow: 0 0 0 2px #4a90a4;
+}
+.drag-handle {
+color: #ccc; font-size: 16px; cursor: grab;
+padding: 0 4px; flex-shrink: 0; touch-action: none;
+display: flex; flex-direction: column; gap: 3px;
+}
+.drag-handle span {
+display: block; width: 14px; height: 2px; background: #ccc; border-radius: 1px;
 }
 .cat-color {
 width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
@@ -139,7 +156,6 @@ width: 100%; padding: 12px; border-radius: 10px;
 border: none; background: #f0eeea; color: #1a1a1a;
 font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
 }
-touch-action: manipulation;
 </style>
 
 </head>
@@ -178,6 +194,9 @@ touch-action: manipulation;
     <button class="modal-close" onclick="closeChangeCatModal()">閉じる</button>
   </div>
 </div>
+
+<!-- カテゴリ管理モーダル -->
+
 <div class="modal-overlay" id="modal-overlay" onclick="closeCatModal(event)">
   <div class="modal">
     <h2>カテゴリを管理</h2>
@@ -193,7 +212,6 @@ touch-action: manipulation;
 <script>
 const STORAGE_KEY = 'todo_v2';
 const CAT_KEY = 'todo_cats_v2';
-
 const PALETTE = ['#4a90a4','#a0876d','#7a8fa6','#8a6d9a','#6d9a7a','#a46d4a','#9a7a6d','#6d7a9a'];
 
 let todos = [];
@@ -240,6 +258,12 @@ function deleteTodo(id) {
   todos = todos.filter(t => t.id !== id);
   save(); render();
 }
+function editTodoText(id, text) {
+  text = text.trim();
+  if (!text) return;
+  todos = todos.map(t => t.id === id ? {...t, text} : t);
+  save();
+}
 
 function addCategory() {
   const input = document.getElementById('new-cat-input');
@@ -249,13 +273,19 @@ function addCategory() {
   input.value = '';
   save(); renderCatModal(); render();
 }
-function editTodoText(id, text) {
-  text = text.trim();
-  if (!text) return;
-  todos = todos.map(t => t.id === id ? {...t, text} : t);
-  save();
+function renameCategory(id, name) {
+  name = name.trim();
+  if (!name) return;
+  categories = categories.map(c => c.id === id ? {...c, name} : c);
+  save(); render();
+}
+function deleteCategory(id) {
+  categories = categories.filter(c => c.id !== id);
+  todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
+  save(); renderCatModal(); render();
 }
 
+// カテゴリ変更
 let changeCatTargetId = null;
 function openChangeCatModal(todoId) {
   changeCatTargetId = todoId;
@@ -289,21 +319,11 @@ function closeChangeCatModal(e) {
   }
 }
 
-function renameCategory(id, name) {
-  name = name.trim();
-  if (!name) return;
-  categories = categories.map(c => c.id === id ? {...c, name} : c);
-  save(); render();
-}
-function deleteCategory(id) {
-  categories = categories.filter(c => c.id !== id);
-  todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
-  save(); renderCatModal(); render();
-}
-
+// カテゴリ管理モーダル
 function openCatModal() {
   renderCatModal();
   document.getElementById('modal-overlay').classList.add('open');
+  initDragSort();
 }
 function closeCatModal(e) {
   if (!e || e.target === document.getElementById('modal-overlay')) {
@@ -317,7 +337,10 @@ function renderCatModal() {
     list.innerHTML = '<div style="color:#bbb;font-size:13px;text-align:center;padding:8px 0">カテゴリがありません</div>';
   } else {
     list.innerHTML = categories.map(c => `
-      <div class="cat-item">
+      <div class="cat-item" data-id="${c.id}">
+        <div class="drag-handle" data-handle>
+          <span></span><span></span><span></span>
+        </div>
         <div class="cat-color" style="background:${catColor(c.id)}"></div>
         <input class="cat-name" value="${escapeHtml(c.name)}"
           onchange="renameCategory('${c.id}', this.value)"
@@ -326,12 +349,71 @@ function renderCatModal() {
       </div>
     `).join('');
   }
-  // selectも更新
   const sel = document.getElementById('cat-select');
   const cur = sel.value;
   sel.innerHTML = '<option value="">カテゴリなし</option>' +
     categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
   sel.value = cur;
+  initDragSort();
+}
+
+// ドラッグ並べ替え（タッチ対応）
+function initDragSort() {
+  const list = document.getElementById('cat-list');
+  if (!list) return;
+  let dragEl = null;
+  let startY = 0;
+  let startIdx = 0;
+
+  list.querySelectorAll('[data-handle]').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const item = handle.closest('.cat-item');
+      dragEl = item;
+      startY = e.touches[0].clientY;
+      startIdx = [...list.children].indexOf(item);
+      item.classList.add('dragging');
+      e.preventDefault();
+    }, { passive: false });
+  });
+
+  list.addEventListener('touchmove', e => {
+    if (!dragEl) return;
+    e.preventDefault();
+    const y = e.touches[0].clientY;
+    const items = [...list.querySelectorAll('.cat-item:not(.dragging)')];
+    let target = null;
+    for (const item of items) {
+      const rect = item.getBoundingClientRect();
+      if (y < rect.top + rect.height / 2) { target = item; break; }
+    }
+    items.forEach(i => i.classList.remove('drag-over'));
+    if (target) target.classList.add('drag-over');
+  }, { passive: false });
+
+  list.addEventListener('touchend', e => {
+    if (!dragEl) return;
+    const y = e.changedTouches[0].clientY;
+    const items = [...list.querySelectorAll('.cat-item:not(.dragging)')];
+    let targetIdx = categories.length;
+    for (let i = 0; i < items.length; i++) {
+      const rect = items[i].getBoundingClientRect();
+      if (y < rect.top + rect.height / 2) { targetIdx = i; break; }
+    }
+    dragEl.classList.remove('dragging');
+    items.forEach(i => i.classList.remove('drag-over'));
+
+    // 並べ替え
+    const dragId = dragEl.dataset.id;
+    const newCats = categories.filter(c => c.id !== dragId);
+    const dragCat = categories.find(c => c.id === dragId);
+    const insertIdx = targetIdx > startIdx ? targetIdx - 1 : targetIdx;
+    newCats.splice(insertIdx, 0, dragCat);
+    categories = newCats;
+    save();
+    renderCatModal();
+    render();
+    dragEl = null;
+  });
 }
 
 function render() {
@@ -339,7 +421,6 @@ function render() {
   document.getElementById('subtitle').textContent =
     todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
 
-  // filter buttons
   const filterBtns = document.getElementById('filter-btns');
   filterBtns.innerHTML = [
     {id: '__all__', name: 'すべて'},
@@ -350,10 +431,8 @@ function render() {
       onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>
   `).join('');
 
-  // cat select
   renderCatModal();
 
-  // todo list
   const filtered = todos.filter(t => {
     if (filterCat === '__all__') return true;
     if (filterCat === '__none__') return !t.catId;
