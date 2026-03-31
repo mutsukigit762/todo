@@ -322,7 +322,7 @@ function _dragMove(e) {
   if (!_drag.ghost) return;
   e.preventDefault();
   const touch = e.touches[0];
-  _drag.ghost.style.left = (touch.clientX - _drag.offsetX) + 'px';
+  _drag.ghost.style.left = (_drag.ghost.getBoundingClientRect().left) + 'px';
   _drag.ghost.style.top = (touch.clientY - _drag.offsetY) + 'px';
   const siblings = [..._drag.list.querySelectorAll('.cat-item:not(.drag-placeholder)')];
   let inserted = false;
