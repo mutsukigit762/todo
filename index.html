@@ -349,6 +349,7 @@ function _dragEnd() {
   const allEls = [..._drag.list.children];
   const newOrder = [];
   for (const el of allEls) {
+    if (el === _drag._hiddenItem) continue; // 非表示の元アイテムは除外
     if (el === _drag.placeholder) {
       const cat = categories.find(c => c.id === _drag.dragId);
       if (cat) newOrder.push(cat);
