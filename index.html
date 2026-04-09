@@ -464,7 +464,17 @@ function render() {
     todos.length > 0 ? `完了 ${todos.filter(t=>t.done).length} / ${todos.length}` : '';
 }
 
-function setFilter(id) { filterCat = id; render(); }
+function setFilter(id) {
+  filterCat = id;
+  // 入力欄のカテゴリも連動（すべて・カテゴリなし以外）
+  const sel = document.getElementById('cat-select');
+  if (id !== '__all__' && id !== '__none__') {
+    sel.value = id;
+  } else {
+    sel.value = '';
+  }
+  render();
+}
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
