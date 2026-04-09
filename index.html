@@ -53,18 +53,19 @@
   .todo-list { display: flex; flex-direction: column; gap: 6px; }
   .todo-item {
     background: #fff; border-radius: 10px; padding: 12px 14px;
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: flex-start; gap: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: opacity 0.2s;
   }
   .todo-item.done { opacity: 0.5; }
   .check-box {
     width: 20px; height: 20px; border-radius: 5px; border: 2px solid #ccc;
-    cursor: pointer; flex-shrink: 0;
+    cursor: pointer; flex-shrink: 0; margin-top: 2px;
     display: flex; align-items: center; justify-content: center; transition: all 0.15s;
   }
   .todo-text {
     flex: 1; font-size: 16px; color: #1a1a1a; border: none; outline: none;
     background: transparent; font-family: inherit; padding: 0; min-width: 0;
+    word-break: break-all; line-height: 1.5; cursor: text;
   }
   .todo-item.done .todo-text { text-decoration: line-through; color: #aaa; }
   .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; }
@@ -449,9 +450,9 @@ function render() {
             onclick="toggleTodo(${todo.id})">
             ${todo.done?`<svg width="11" height="8" viewBox="0 0 11 8" fill="none"><path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
           </div>
-          <input class="todo-text" value="${escapeHtml(todo.text)}"
-            onchange="editTodoText(${todo.id}, this.value)"
-            onblur="editTodoText(${todo.id}, this.value)" />
+          <div class="todo-text" contenteditable="true"
+            onblur="editTodoText(${todo.id}, this.innerText)"
+            >${escapeHtml(todo.text)}</div>
           <span class="tag${name?'':' no-cat'}"
             style="${name?`background:${color}22;color:${color}`:''}"
             onclick="openChangeCatModal(${todo.id})">${name?escapeHtml(name):'未分類'}</span>
