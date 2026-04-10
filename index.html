@@ -159,7 +159,21 @@ display: flex; align-items: center; gap: 8px;
   <div class="modal">
     <h2>カテゴリを変更</h2>
     <div class="cat-list" id="change-cat-list"></div>
+    <button class="cat-manage-btn" style="margin-bottom:8px" onclick="openAddCatFromChangeModal()">＋ カテゴリを追加</button>
     <button class="modal-close" onclick="closeChangeCatModal()">閉じる</button>
+  </div>
+</div>
+
+<!-- カテゴリ追加モーダル（変更画面から） -->
+
+<div class="modal-overlay" id="add-cat-from-change-overlay" onclick="closeAddCatFromChangeModal(event)" style="align-items:center">
+  <div class="modal" style="border-radius:16px;max-width:340px;margin:0 16px">
+    <h2>カテゴリを追加</h2>
+    <div class="add-cat-row">
+      <input class="add-cat-input" id="add-cat-from-change-input" placeholder="カテゴリ名..." />
+      <button class="add-cat-btn" onclick="addCategoryFromChange()">追加</button>
+    </div>
+    <button class="modal-close" onclick="closeAddCatFromChangeModal()">キャンセル</button>
   </div>
 </div>
 
@@ -256,6 +270,29 @@ function deleteCategory(id) {
   categories = categories.filter(c => c.id !== id);
   todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
   save(); renderCatModal(); render();
+}
+
+function openAddCatFromChangeModal() {
+  document.getElementById('add-cat-from-change-input').value = '';
+  document.getElementById('add-cat-from-change-overlay').classList.add('open');
+}
+function closeAddCatFromChangeModal(e) {
+  if (!e || e.target === document.getElementById('add-cat-from-change-overlay')) {
+    document.getElementById('add-cat-from-change-overlay').classList.remove('open');
+  }
+}
+function addCategoryFromChange() {
+  const input = document.getElementById('add-cat-from-change-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const usedColors = categories.map(c => c.color);
+  const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[categories.length % PALETTE.length];
+  categories.push({ id: Date.now().toString(), name, color });
+  input.value = '';
+  save();
+  closeAddCatFromChangeModal();
+  // カテゴリ変更モーダルのリストを更新
+  openChangeCatModal(changeCatTargetId);
 }
 
 let changeCatTargetId = null;
