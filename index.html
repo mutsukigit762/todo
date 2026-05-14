@@ -68,9 +68,9 @@
     word-break: break-all; line-height: 1.5; cursor: text;
   }
   .todo-item.done .todo-text { text-decoration: line-through; color: #aaa; }
-  .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; margin-top: 3px; }
   .tag.no-cat { color: #ccc; background: #f5f5f5; }
-  .del-btn { border: none; background: none; cursor: pointer; color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1; }
+  .del-btn { border: none; background: none; cursor: pointer; color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
   .empty { text-align: center; color: #bbb; font-size: 16px; padding: 32px 0; }
   .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 16px; }
   .cat-manage-btn { font-size: 12px; color: #aaa; background: none; border: none; cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit; }
@@ -164,8 +164,6 @@ display: flex; align-items: center; gap: 8px;
   </div>
 </div>
 
-<!-- カテゴリ追加モーダル（変更画面から） -->
-
 <div class="modal-overlay" id="add-cat-from-change-overlay" onclick="closeAddCatFromChangeModal(event)" style="align-items:center">
   <div class="modal" style="border-radius:16px;max-width:340px;margin:0 16px">
     <h2>カテゴリを追加</h2>
@@ -201,7 +199,6 @@ let filterCat = '__all__';
 function load() {
   try { todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { todos = []; }
   try { categories = JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch(e) { categories = []; }
-  // 色をidに固定で紐づける
   categories = categories.map((c, i) => ({
     ...c,
     color: c.color || PALETTE[i % PALETTE.length]
@@ -291,7 +288,6 @@ function addCategoryFromChange() {
   input.value = '';
   save();
   closeAddCatFromChangeModal();
-  // カテゴリ変更モーダルのリストを更新
   openChangeCatModal(changeCatTargetId);
 }
 
@@ -361,8 +357,6 @@ function renderCatModal() {
   initDragSort();
 }
 
-// タッチドラッグ並べ替え
-// ドラッグ状態（グローバル）
 let _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0 };
 
 function _dragMove(e) {
@@ -388,7 +382,7 @@ function _dragEnd() {
   const allEls = [..._drag.list.children];
   const newOrder = [];
   for (const el of allEls) {
-    if (el === _drag._hiddenItem) continue; // 非表示の元アイテムは除外
+    if (el === _drag._hiddenItem) continue;
     if (el === _drag.placeholder) {
       const cat = categories.find(c => c.id === _drag.dragId);
       if (cat) newOrder.push(cat);
@@ -457,7 +451,6 @@ function render() {
     todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
 
   document.getElementById('filter-btns').innerHTML = [
-    {id: '__all__', name: 'すべて'},
     {id: '__none__', name: 'カテゴリなし'},
     ...categories
   ].map(c => `
@@ -503,11 +496,11 @@ function render() {
 }
 
 function setFilter(id) {
-  filterCat = id;
-  // 入力欄のカテゴリも連動（すべて・カテゴリなし以外）
+  // 同じボタンをもう一度押したら解除
+  filterCat = filterCat === id ? '__all__' : id;
   const sel = document.getElementById('cat-select');
-  if (id !== '__all__' && id !== '__none__') {
-    sel.value = id;
+  if (filterCat !== '__all__' && filterCat !== '__none__') {
+    sel.value = filterCat;
   } else {
     sel.value = '';
   }
