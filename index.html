@@ -156,6 +156,17 @@ display: flex; align-items: center; gap: 8px;
   <div class="count" id="count"></div>
 </div>
 
+<div class="modal-overlay" id="add-cat-from-select-overlay" onclick="closeAddCatFromSelectModal(event)" style="align-items:center">
+  <div class="modal" style="border-radius:16px;max-width:340px;margin:0 16px">
+    <h2>新規カテゴリ</h2>
+    <div class="add-cat-row">
+      <input class="add-cat-input" id="add-cat-from-select-input" placeholder="カテゴリ名..." />
+      <button class="add-cat-btn" onclick="addCategoryFromSelect()">追加</button>
+    </div>
+    <button class="modal-close" onclick="closeAddCatFromSelectModal()">キャンセル</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="change-cat-overlay" onclick="closeChangeCatModal(event)">
   <div class="modal">
     <h2>カテゴリを変更</h2>
@@ -219,6 +230,39 @@ function addTodo() {
   todos.push({ id: Date.now(), text, catId, done: false });
   input.value = '';
   save(); render();
+}
+
+document.getElementById('cat-select').addEventListener('change', function() {
+  if (this.value === '__new__') {
+    this.value = '';
+    document.getElementById('add-cat-from-select-input').value = '';
+    document.getElementById('add-cat-from-select-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('add-cat-from-select-input').focus(), 100);
+  }
+});
+function closeAddCatFromSelectModal(e) {
+  if (!e || e.target === document.getElementById('add-cat-from-select-overlay')) {
+    document.getElementById('add-cat-from-select-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+function addCategoryFromSelect() {
+  const input = document.getElementById('add-cat-from-select-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const usedColors = categories.map(c => c.color);
+  const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[categories.length % PALETTE.length];
+  const newCat = { id: Date.now().toString(), name, color };
+  categories.push(newCat);
+  input.value = '';
+  save();
+  closeAddCatFromSelectModal();
+  render();
+  // 追加したカテゴリをセレクトに反映して選択
+  setTimeout(() => {
+    document.getElementById('cat-select').value = newCat.id;
+  }, 50);
 }
 
 document.getElementById('task-input').addEventListener('keydown', e => {
@@ -378,7 +422,8 @@ function renderCatModal() {
   const sel = document.getElementById('cat-select');
   const cur = sel.value;
   sel.innerHTML = '<option value="">カテゴリなし</option>' +
-    categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('') +
+    '<option value="__new__">＋ 新規カテゴリ</option>';
   sel.value = cur;
   initDragSort();
 }
