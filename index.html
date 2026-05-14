@@ -57,8 +57,7 @@
     background: #fff; border-radius: 10px; padding: 12px 14px;
     display: flex; align-items: flex-start; gap: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    margin-bottom: 6px;
-    overflow: hidden;
+    margin-bottom: 6px; overflow: hidden;
   }
   .todo-item.done { opacity: 0.5; }
   .check-box {
@@ -77,6 +76,7 @@
   .del-btn { border: none; background: none; cursor: pointer; color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
   .empty { text-align: center; color: #bbb; font-size: 16px; padding: 32px 0; }
   .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 16px; }
+  .sync-status { font-size: 11px; color: #bbb; text-align: right; padding-top: 4px; min-height: 16px; }
   .cat-manage-btn { font-size: 12px; color: #aaa; background: none; border: none; cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit; }
 
 .modal-overlay {
@@ -154,6 +154,7 @@ display: flex; align-items: center; gap: 8px;
   </div>
   <div class="todo-list" id="todo-list"></div>
   <div class="count" id="count"></div>
+  <div class="sync-status" id="sync-status">読み込み中…</div>
 </div>
 
 <div class="modal-overlay" id="add-cat-from-select-overlay" onclick="closeAddCatFromSelectModal(event)" style="align-items:center">
@@ -199,38 +200,80 @@ display: flex; align-items: center; gap: 8px;
   </div>
 </div>
 
-<script>
-const STORAGE_KEY = 'todo_v2';
-const CAT_KEY = 'todo_cats_v2';
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCKaQiKqGgb658Vafc8SLHfzu5KanjXaNw",
+  authDomain: "todo-mutsuki-ea166.firebaseapp.com",
+  projectId: "todo-mutsuki-ea166",
+  storageBucket: "todo-mutsuki-ea166.firebasestorage.app",
+  messagingSenderId: "511470199591",
+  appId: "1:511470199591:web:b4782f2069a823d552bf02"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const DATA_DOC = doc(db, 'todo', 'main');
+
 const PALETTE = ['#4a90a4','#a0876d','#7a8fa6','#8a6d9a','#6d9a7a','#a46d4a','#9a7a6d','#6d7a9a'];
 
 let todos = [];
 let categories = [];
 let filterCat = '__all__';
-let showDone = false;
+let saveTimer = null;
 
-function load() {
-  try { todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { todos = []; }
-  try { categories = JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch(e) { categories = []; }
-  categories = categories.map((c, i) => ({ ...c, color: c.color || PALETTE[i % PALETTE.length] }));
+function setSyncStatus(msg) {
+  document.getElementById('sync-status').textContent = msg;
 }
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-  localStorage.setItem(CAT_KEY, JSON.stringify(categories));
+
+async function saveToCloud() {
+  try {
+    await setDoc(DATA_DOC, { todos, categories });
+    setSyncStatus('');
+  } catch(e) {
+    setSyncStatus('保存失敗');
+    console.error(e);
+  }
 }
+
+function scheduleSave() {
+  setSyncStatus('保存中…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToCloud(), 800);
+}
+
+onSnapshot(DATA_DOC, (snap) => {
+  if (!snap.exists()) { setSyncStatus(''); render(); return; }
+  const data = snap.data();
+  todos = (data.todos || []).map(t => ({...t, id: Number(t.id) || t.id}));
+  categories = (data.categories || []).map((c, i) => ({
+    ...c, color: c.color || PALETTE[i % PALETTE.length]
+  }));
+  setSyncStatus('');
+  render();
+}, (err) => {
+  setSyncStatus('接続エラー');
+  console.error(err);
+});
 
 function catColor(catId) { const c = categories.find(c => c.id === catId); return c ? c.color : null; }
 function catName(catId) { const c = categories.find(c => c.id === catId); return c ? c.name : null; }
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-function addTodo() {
+window.addTodo = function() {
   const input = document.getElementById('task-input');
   const text = input.value.trim();
   if (!text) return;
   const catId = document.getElementById('cat-select').value || null;
+  if (catId === '__new__') return;
   todos.push({ id: Date.now(), text, catId, done: false });
   input.value = '';
-  save(); render();
-}
+  scheduleSave(); render();
+};
 
 document.getElementById('cat-select').addEventListener('change', function() {
   if (this.value === '__new__') {
@@ -241,13 +284,15 @@ document.getElementById('cat-select').addEventListener('change', function() {
     setTimeout(() => document.getElementById('add-cat-from-select-input').focus(), 100);
   }
 });
-function closeAddCatFromSelectModal(e) {
+
+window.closeAddCatFromSelectModal = function(e) {
   if (!e || e.target === document.getElementById('add-cat-from-select-overlay')) {
     document.getElementById('add-cat-from-select-overlay').classList.remove('open');
     document.body.style.overflow = '';
   }
-}
-function addCategoryFromSelect() {
+};
+
+window.addCategoryFromSelect = function() {
   const input = document.getElementById('add-cat-from-select-input');
   const name = input.value.trim();
   if (!name) return;
@@ -256,26 +301,21 @@ function addCategoryFromSelect() {
   const newCat = { id: Date.now().toString(), name, color };
   categories.push(newCat);
   input.value = '';
-  save();
-  closeAddCatFromSelectModal();
+  scheduleSave();
+  window.closeAddCatFromSelectModal();
   render();
-  // 追加したカテゴリをセレクトに反映して選択
-  setTimeout(() => {
-    document.getElementById('cat-select').value = newCat.id;
-  }, 50);
-}
+  setTimeout(() => { document.getElementById('cat-select').value = newCat.id; }, 50);
+};
 
 document.getElementById('task-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addTodo();
+  if (e.key === 'Enter') window.addTodo();
 });
 
-function toggleTodo(id) {
+window.toggleTodo = function(id) {
   todos = todos.map(t => t.id === id ? {...t, done: !t.done} : t);
-  save();
-
+  scheduleSave();
   const todo = todos.find(t => t.id === id);
   if (todo.done && filterCat !== '__done__') {
-    // チェックマークを手動で即反映
     const el = document.querySelector(`[data-todo-id="${id}"]`);
     if (el) {
       el.classList.add('done');
@@ -305,20 +345,21 @@ function toggleTodo(id) {
   } else {
     render();
   }
-}
+};
 
-function deleteTodo(id) {
+window.deleteTodo = function(id) {
   todos = todos.filter(t => t.id !== id);
-  save(); render();
-}
-function editTodoText(id, text) {
+  scheduleSave(); render();
+};
+
+window.editTodoText = function(id, text) {
   text = text.trim();
   if (!text) return;
   todos = todos.map(t => t.id === id ? {...t, text} : t);
-  save();
-}
+  scheduleSave();
+};
 
-function addCategory() {
+window.addCategory = function() {
   const input = document.getElementById('new-cat-input');
   const name = input.value.trim();
   if (!name) return;
@@ -326,29 +367,33 @@ function addCategory() {
   const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[categories.length % PALETTE.length];
   categories.push({ id: Date.now().toString(), name, color });
   input.value = '';
-  save(); renderCatModal(); render();
-}
-function renameCategory(id, name) {
+  scheduleSave(); renderCatModal(); render();
+};
+
+window.renameCategory = function(id, name) {
   name = name.trim();
   if (!name) return;
   categories = categories.map(c => c.id === id ? {...c, name} : c);
-  save(); render();
-}
-function deleteCategory(id) {
+  scheduleSave(); render();
+};
+
+window.deleteCategory = function(id) {
   categories = categories.filter(c => c.id !== id);
   todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
-  save(); renderCatModal(); render();
-}
+  scheduleSave(); renderCatModal(); render();
+};
 
-function openAddCatFromChangeModal() {
+window.openAddCatFromChangeModal = function() {
   document.getElementById('add-cat-from-change-input').value = '';
   document.getElementById('add-cat-from-change-overlay').classList.add('open');
-}
-function closeAddCatFromChangeModal(e) {
+};
+
+window.closeAddCatFromChangeModal = function(e) {
   if (!e || e.target === document.getElementById('add-cat-from-change-overlay'))
     document.getElementById('add-cat-from-change-overlay').classList.remove('open');
-}
-function addCategoryFromChange() {
+};
+
+window.addCategoryFromChange = function() {
   const input = document.getElementById('add-cat-from-change-input');
   const name = input.value.trim();
   if (!name) return;
@@ -356,13 +401,13 @@ function addCategoryFromChange() {
   const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[categories.length % PALETTE.length];
   categories.push({ id: Date.now().toString(), name, color });
   input.value = '';
-  save();
-  closeAddCatFromChangeModal();
-  openChangeCatModal(changeCatTargetId);
-}
+  scheduleSave();
+  window.closeAddCatFromChangeModal();
+  window.openChangeCatModal(changeCatTargetId);
+};
 
 let changeCatTargetId = null;
-function openChangeCatModal(todoId) {
+window.openChangeCatModal = function(todoId) {
   changeCatTargetId = todoId;
   const list = document.getElementById('change-cat-list');
   list.innerHTML = [
@@ -380,29 +425,32 @@ function openChangeCatModal(todoId) {
   }).join('');
   document.getElementById('change-cat-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-}
-function changeTodoCat(catId) {
+};
+
+window.changeTodoCat = function(catId) {
   todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId==='null'?null:catId} : t);
-  save(); render(); closeChangeCatModal();
-}
-function closeChangeCatModal(e) {
+  scheduleSave(); render(); window.closeChangeCatModal();
+};
+
+window.closeChangeCatModal = function(e) {
   if (!e || e.target === document.getElementById('change-cat-overlay')) {
     document.getElementById('change-cat-overlay').classList.remove('open');
     document.body.style.overflow = '';
   }
-}
+};
 
-function openCatModal() {
+window.openCatModal = function() {
   renderCatModal();
   document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-}
-function closeCatModal(e) {
+};
+
+window.closeCatModal = function(e) {
   if (!e || e.target === document.getElementById('modal-overlay')) {
     document.getElementById('modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
   }
-}
+};
 
 function renderCatModal() {
   const list = document.getElementById('cat-list');
@@ -428,7 +476,7 @@ function renderCatModal() {
   initDragSort();
 }
 
-let _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0 };
+let _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0, _hiddenItem: null };
 
 function _dragMove(e) {
   if (!_drag.ghost) return;
@@ -455,7 +503,7 @@ function _dragEnd() {
     else if (el.dataset && el.dataset.id) { const cat = categories.find(c => c.id === el.dataset.id); if (cat) newOrder.push(cat); }
   }
   if (newOrder.length === categories.length) categories = newOrder;
-  save();
+  scheduleSave();
   _drag.ghost.remove();
   _drag.placeholder.remove();
   if (_drag._hiddenItem) _drag._hiddenItem.remove();
@@ -556,7 +604,7 @@ function render() {
     todos.filter(t => !t.done).length > 0 ? `残り ${todos.filter(t=>!t.done).length} / ${todos.length}` : '';
 }
 
-function setFilter(id) {
+window.setFilter = function(id) {
   filterCat = filterCat === id ? '__all__' : id;
   const sel = document.getElementById('cat-select');
   if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
@@ -565,12 +613,7 @@ function setFilter(id) {
     sel.value = '';
   }
   render();
-}
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-load(); render();
+};
 </script>
 
 </body>
