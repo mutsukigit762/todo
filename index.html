@@ -50,11 +50,19 @@
     transition: all 0.15s; font-family: inherit;
   }
   .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
+  .filter-btn.done-btn { border-color: #bbb; color: #bbb; }
+  .filter-btn.done-btn.active { border-color: #888; background: #888; color: #fff; }
   .todo-list { display: flex; flex-direction: column; gap: 6px; }
   .todo-item {
     background: #fff; border-radius: 10px; padding: 12px 14px;
     display: flex; align-items: flex-start; gap: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: opacity 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: margin 0.3s, padding 0.3s;
+    overflow: hidden;
+  }
+  .todo-item.collapsing {
+    max-height: 0 !important; padding-top: 0; padding-bottom: 0;
+    margin: 0; opacity: 0; transition: max-height 0.3s ease, padding 0.3s, margin 0.3s, opacity 0.1s;
   }
   .todo-item.done { opacity: 0.5; }
   .check-box {
@@ -93,14 +101,11 @@ display: flex; align-items: center; gap: 8px;
 background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
 user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
-.cat-item.drag-placeholder {
-background: #e8e6e0; opacity: 0.5; border: 2px dashed #ccc;
-}
+.cat-item.drag-placeholder { background: #e8e6e0; opacity: 0.5; border: 2px dashed #ccc; }
 .drag-handle {
 display: flex; flex-direction: column; gap: 3px;
 padding: 0 4px; flex-shrink: 0; touch-action: none; cursor: grab;
--webkit-user-select: none; user-select: none;
--webkit-touch-callout: none;
+-webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 .drag-handle span { display: block; width: 14px; height: 2px; background: #ccc; border-radius: 1px; }
 .cat-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
@@ -195,28 +200,20 @@ const PALETTE = ['#4a90a4','#a0876d','#7a8fa6','#8a6d9a','#6d9a7a','#a46d4a','#9
 let todos = [];
 let categories = [];
 let filterCat = '__all__';
+let showDone = false;
 
 function load() {
   try { todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { todos = []; }
   try { categories = JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch(e) { categories = []; }
-  categories = categories.map((c, i) => ({
-    ...c,
-    color: c.color || PALETTE[i % PALETTE.length]
-  }));
+  categories = categories.map((c, i) => ({ ...c, color: c.color || PALETTE[i % PALETTE.length] }));
 }
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
   localStorage.setItem(CAT_KEY, JSON.stringify(categories));
 }
 
-function catColor(catId) {
-  const c = categories.find(c => c.id === catId);
-  return c ? c.color : null;
-}
-function catName(catId) {
-  const c = categories.find(c => c.id === catId);
-  return c ? c.name : null;
-}
+function catColor(catId) { const c = categories.find(c => c.id === catId); return c ? c.color : null; }
+function catName(catId) { const c = categories.find(c => c.id === catId); return c ? c.name : null; }
 
 function addTodo() {
   const input = document.getElementById('task-input');
@@ -234,8 +231,27 @@ document.getElementById('task-input').addEventListener('keydown', e => {
 
 function toggleTodo(id) {
   todos = todos.map(t => t.id === id ? {...t, done: !t.done} : t);
-  save(); render();
+  save();
+
+  const todo = todos.find(t => t.id === id);
+  if (todo.done && filterCat !== '__done__') {
+    const el = document.querySelector(`[data-todo-id="${id}"]`);
+    if (el) {
+      el.classList.add('done');
+      setTimeout(() => {
+        const h = el.offsetHeight;
+        el.style.maxHeight = h + 'px';
+        requestAnimationFrame(() => {
+          el.classList.add('collapsing');
+          setTimeout(() => render(), 350);
+        });
+      }, 1500);
+    }
+  } else {
+    render();
+  }
 }
+
 function deleteTodo(id) {
   todos = todos.filter(t => t.id !== id);
   save(); render();
@@ -274,9 +290,8 @@ function openAddCatFromChangeModal() {
   document.getElementById('add-cat-from-change-overlay').classList.add('open');
 }
 function closeAddCatFromChangeModal(e) {
-  if (!e || e.target === document.getElementById('add-cat-from-change-overlay')) {
+  if (!e || e.target === document.getElementById('add-cat-from-change-overlay'))
     document.getElementById('add-cat-from-change-overlay').classList.remove('open');
-  }
 }
 function addCategoryFromChange() {
   const input = document.getElementById('add-cat-from-change-input');
@@ -302,17 +317,17 @@ function openChangeCatModal(todoId) {
     const todo = todos.find(t => t.id === todoId);
     const active = todo && todo.catId === c.id;
     return `
-      <div class="cat-item" onclick="changeTodoCat('${c.id}')" style="cursor:pointer;${active ? 'background:#f0f0f0' : ''}">
-        <div class="cat-color" style="background:${c.color || '#ddd'}"></div>
+      <div class="cat-item" onclick="changeTodoCat('${c.id}')" style="cursor:pointer;${active?'background:#f0f0f0':''}">
+        <div class="cat-color" style="background:${c.color||'#ddd'}"></div>
         <span class="cat-name" style="cursor:pointer">${escapeHtml(c.name)}</span>
-        ${active ? '<span style="color:#aaa;font-size:12px">✓</span>' : ''}
+        ${active?'<span style="color:#aaa;font-size:12px">✓</span>':''}
       </div>`;
   }).join('');
   document.getElementById('change-cat-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 function changeTodoCat(catId) {
-  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId === 'null' ? null : catId} : t);
+  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId==='null'?null:catId} : t);
   save(); render(); closeChangeCatModal();
 }
 function closeChangeCatModal(e) {
@@ -369,10 +384,7 @@ function _dragMove(e) {
   let inserted = false;
   for (const sib of siblings) {
     const r = sib.getBoundingClientRect();
-    if (touch.clientY < r.top + r.height / 2) {
-      _drag.list.insertBefore(_drag.placeholder, sib);
-      inserted = true; break;
-    }
+    if (touch.clientY < r.top + r.height / 2) { _drag.list.insertBefore(_drag.placeholder, sib); inserted = true; break; }
   }
   if (!inserted) _drag.list.appendChild(_drag.placeholder);
 }
@@ -383,13 +395,8 @@ function _dragEnd() {
   const newOrder = [];
   for (const el of allEls) {
     if (el === _drag._hiddenItem) continue;
-    if (el === _drag.placeholder) {
-      const cat = categories.find(c => c.id === _drag.dragId);
-      if (cat) newOrder.push(cat);
-    } else if (el.dataset && el.dataset.id) {
-      const cat = categories.find(c => c.id === el.dataset.id);
-      if (cat) newOrder.push(cat);
-    }
+    if (el === _drag.placeholder) { const cat = categories.find(c => c.id === _drag.dragId); if (cat) newOrder.push(cat); }
+    else if (el.dataset && el.dataset.id) { const cat = categories.find(c => c.id === el.dataset.id); if (cat) newOrder.push(cat); }
   }
   if (newOrder.length === categories.length) categories = newOrder;
   save();
@@ -397,8 +404,7 @@ function _dragEnd() {
   _drag.placeholder.remove();
   if (_drag._hiddenItem) _drag._hiddenItem.remove();
   _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0, _hiddenItem: null };
-  renderCatModal();
-  render();
+  renderCatModal(); render();
 }
 
 document.addEventListener('touchmove', _dragMove, { passive: false });
@@ -407,7 +413,6 @@ document.addEventListener('touchend', _dragEnd);
 function initDragSort() {
   const list = document.getElementById('cat-list');
   if (!list) return;
-
   list.querySelectorAll('[data-handle]').forEach(handle => {
     handle.addEventListener('touchstart', e => {
       e.preventDefault();
@@ -415,12 +420,10 @@ function initDragSort() {
       if (!item) return;
       const touch = e.touches[0];
       const rect = item.getBoundingClientRect();
-
       _drag.dragId = item.dataset.id;
       _drag.list = list;
       _drag.offsetX = touch.clientX - rect.left;
       _drag.offsetY = touch.clientY - rect.top;
-
       _drag.placeholder = document.createElement('div');
       _drag.placeholder.className = 'cat-item drag-placeholder';
       _drag.placeholder.style.height = rect.height + 'px';
@@ -429,7 +432,6 @@ function initDragSort() {
       item.style.position = 'absolute';
       item.style.pointerEvents = 'none';
       _drag._hiddenItem = item;
-
       _drag.ghost = document.createElement('div');
       _drag.ghost.className = 'drag-ghost';
       _drag.ghost.style.width = rect.width + 'px';
@@ -450,31 +452,34 @@ function render() {
   document.getElementById('subtitle').textContent =
     todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
 
+  const doneCount = todos.filter(t => t.done).length;
   document.getElementById('filter-btns').innerHTML = [
-    {id: '__none__', name: 'カテゴリなし'},
-    ...categories
+    {id: '__none__', name: 'カテゴリなし', cls: ''},
+    ...categories.map(c => ({id: c.id, name: c.name, cls: ''})),
+    {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'}
   ].map(c => `
-    <button class="filter-btn${filterCat === c.id ? ' active' : ''}"
+    <button class="filter-btn${filterCat === c.id ? ' active' : ''}${c.cls}"
       onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>
   `).join('');
 
   renderCatModal();
 
   const filtered = todos.filter(t => {
-    if (filterCat === '__all__') return true;
-    if (filterCat === '__none__') return !t.catId;
-    return t.catId === filterCat;
+    if (filterCat === '__done__') return t.done;
+    if (filterCat === '__none__') return !t.catId && !t.done;
+    if (filterCat === '__all__') return !t.done;
+    return t.catId === filterCat && !t.done;
   }).reverse();
 
   const list = document.getElementById('todo-list');
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty">タスクがありません</div>';
+    list.innerHTML = `<div class="empty">${filterCat === '__done__' ? '完了したタスクはありません' : 'タスクがありません'}</div>`;
   } else {
     list.innerHTML = filtered.map(todo => {
       const color = todo.catId ? catColor(todo.catId) : null;
       const name = todo.catId ? catName(todo.catId) : null;
       return `
-        <div class="todo-item${todo.done ? ' done' : ''}">
+        <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
           <div class="check-box"
             style="border-color:${todo.done?(color||'#aaa'):'#ccc'};background:${todo.done?(color||'#aaa'):'transparent'}"
             onclick="toggleTodo(${todo.id})">
@@ -492,14 +497,13 @@ function render() {
   }
 
   document.getElementById('count').textContent =
-    todos.length > 0 ? `完了 ${todos.filter(t=>t.done).length} / ${todos.length}` : '';
+    todos.filter(t => !t.done).length > 0 ? `残り ${todos.filter(t=>!t.done).length} / ${todos.length}` : '';
 }
 
 function setFilter(id) {
-  // 同じボタンをもう一度押したら解除
   filterCat = filterCat === id ? '__all__' : id;
   const sel = document.getElementById('cat-select');
-  if (filterCat !== '__all__' && filterCat !== '__none__') {
+  if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
     sel.value = filterCat;
   } else {
     sel.value = '';
