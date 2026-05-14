@@ -52,17 +52,13 @@
   .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
   .filter-btn.done-btn { border-color: #bbb; color: #bbb; }
   .filter-btn.done-btn.active { border-color: #888; background: #888; color: #fff; }
-  .todo-list { display: flex; flex-direction: column; gap: 6px; }
+  .todo-list { display: flex; flex-direction: column; }
   .todo-item {
     background: #fff; border-radius: 10px; padding: 12px 14px;
     display: flex; align-items: flex-start; gap: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    transition: margin 0.3s, padding 0.3s;
+    margin-bottom: 6px;
     overflow: hidden;
-  }
-  .todo-item.collapsing {
-    max-height: 0 !important; padding-top: 0; padding-bottom: 0;
-    margin: 0; opacity: 0; transition: max-height 0.3s ease, padding 0.3s, margin 0.3s, opacity 0.1s;
   }
   .todo-item.done { opacity: 0.5; }
   .check-box {
@@ -235,15 +231,30 @@ function toggleTodo(id) {
 
   const todo = todos.find(t => t.id === id);
   if (todo.done && filterCat !== '__done__') {
+    // チェックマークを手動で即反映
     const el = document.querySelector(`[data-todo-id="${id}"]`);
     if (el) {
       el.classList.add('done');
+      const box = el.querySelector('.check-box');
+      if (box) {
+        const color = todo.catId ? catColor(todo.catId) : '#aaa';
+        box.style.borderColor = color;
+        box.style.background = color;
+        box.innerHTML = `<svg width="11" height="8" viewBox="0 0 11 8" fill="none"><path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      }
       setTimeout(() => {
-        const h = el.offsetHeight;
+        const h = el.getBoundingClientRect().height;
         el.style.maxHeight = h + 'px';
+        el.style.transition = 'max-height 0.35s ease, padding 0.35s, margin 0.35s, opacity 0.35s';
+        el.style.overflow = 'hidden';
         requestAnimationFrame(() => {
-          el.classList.add('collapsing');
-          setTimeout(() => render(), 350);
+          el.style.maxHeight = '0';
+          el.style.paddingTop = '0';
+          el.style.paddingBottom = '0';
+          el.style.marginTop = '0';
+          el.style.marginBottom = '0';
+          el.style.opacity = '0';
+          setTimeout(() => render(), 380);
         });
       }, 1500);
     }
