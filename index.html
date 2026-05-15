@@ -326,6 +326,7 @@ window.toggleTodo = function(id) {
   if (todo.done && filterCat !== '__done__') {
     const el = document.querySelector(`[data-todo-id="${id}"]`);
     if (el) {
+      isAnimating = true;
       el.classList.add('done');
       const box = el.querySelector('.check-box');
       if (box) {
