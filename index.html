@@ -174,11 +174,13 @@ display: flex; align-items: center; gap: 8px;
 </div>
 
 <div class="modal-overlay" id="change-cat-overlay" onclick="closeChangeCatModal(event)">
-  <div class="modal" style="padding:24px 20px 40px">
-    <h2 style="margin-bottom:16px">カテゴリを変更</h2>
-    <div class="cat-list" id="change-cat-list"></div>
-    <button class="cat-manage-btn" style="margin-bottom:8px" onclick="openAddCatFromChangeModal()">＋ カテゴリを追加</button>
-    <button class="modal-close" onclick="closeChangeCatModal()">閉じる</button>
+  <div class="modal">
+    <div class="modal-header"><h2>カテゴリを変更</h2></div>
+    <div class="modal-body"><div class="cat-list" id="change-cat-list"></div></div>
+    <div class="modal-footer">
+      <button class="cat-manage-btn" style="margin-bottom:8px" onclick="openAddCatFromChangeModal()">＋ カテゴリを追加</button>
+      <button class="modal-close" style="margin-top:0" onclick="closeChangeCatModal()">閉じる</button>
+    </div>
   </div>
 </div>
 
