@@ -320,7 +320,7 @@ window.addCategoryFromSelect = function() {
 };
 
 document.getElementById('task-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') window.addTodo();
+  if (e.key === 'Enter' && !e.isComposing) window.addTodo();
 });
 
 window.toggleTodo = function(id) {
