@@ -249,7 +249,7 @@ function setSyncStatus(msg) {
 async function saveToCloud() {
   isSaving = true;
   try {
-    await setDoc(DATA_DOC, { todos, categories });
+    await setDoc(DATA_DOC, { todos, categories, catLastUsed });
     setSyncStatus('');
   } catch(e) {
     setSyncStatus('保存失敗');
@@ -273,6 +273,7 @@ onSnapshot(DATA_DOC, (snap) => {
   categories = (data.categories || []).map((c, i) => ({
     ...c, color: c.color || PALETTE[i % PALETTE.length]
   }));
+  catLastUsed = data.catLastUsed || {};
   setSyncStatus('');
   render();
 }, (err) => {
@@ -293,6 +294,7 @@ window.addTodo = function() {
   const catId = document.getElementById('cat-select').value || null;
   if (catId === '__new__') return;
   todos.push({ id: Date.now(), text, catId, done: false });
+  if (catId) catLastUsed[catId] = Date.now();
   input.value = '';
   scheduleSave(); render();
 };
@@ -471,7 +473,9 @@ window.openChangeCatModal = function(todoId) {
 };
 
 window.changeTodoCat = function(catId) {
-  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: catId==='null'?null:catId} : t);
+  const realId = catId === 'null' ? null : catId;
+  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: realId} : t);
+  if (realId) catLastUsed[realId] = Date.now();
   scheduleSave(); render(); window.closeChangeCatModal();
 };
 
@@ -659,9 +663,6 @@ window.setFilter = function(id) {
     filterCat = '__all__';
   } else {
     filterCat = filterCat === id ? '__all__' : id;
-  }
-  if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
-    catLastUsed[filterCat] = Date.now();
   }
   const sel = document.getElementById('cat-select');
   if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
