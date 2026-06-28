@@ -49,11 +49,22 @@
     display: flex; align-items: center; justify-content: center;
   }
   .filter-area { margin-bottom: 16px; }
-  .filter-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-row1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .filter-btns-fixed { display: flex; gap: 6px; }
+  .filter-btns-scroll {
+    display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .filter-btns-scroll::-webkit-scrollbar { display: none; }
+  .filter-row1 .cat-manage-btn {
+    padding: 5px 2px; border: 1.5px solid transparent;
+    background: transparent; color: #aaa; font-size: 12px;
+    display: inline-block;
+  }
   .filter-btn {
     padding: 5px 12px; border-radius: 20px; border: 1.5px solid #ddd;
     background: transparent; color: #888; font-size: 12px; cursor: pointer;
-    transition: all 0.15s; font-family: inherit;
+    transition: all 0.15s; font-family: inherit; flex-shrink: 0; white-space: nowrap;
   }
   .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
   .filter-btn.done-btn { border-color: #bbb; color: #bbb; }
@@ -160,8 +171,11 @@ display: flex; align-items: center; gap: 8px;
     </div>
   </div>
   <div class="filter-area">
-    <div class="filter-btns" id="filter-btns"></div>
-    <button class="cat-manage-btn" onclick="openCatModal()">＋ カテゴリを編集</button>
+    <div class="filter-row1">
+      <div class="filter-btns-fixed" id="filter-btns-fixed"></div>
+      <button class="cat-manage-btn" onclick="openCatModal()">＋ カテゴリを編集</button>
+    </div>
+    <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
   </div>
   </div>
   <div class="todo-list" id="todo-list"></div>
@@ -604,14 +618,16 @@ function render() {
     todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
 
   const doneCount = todos.filter(t => t.done).length;
-  document.getElementById('filter-btns').innerHTML = [
-    {id: '__none__', name: 'カテゴリなし', cls: ''},
-    ...[...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0)).map(c => ({id: c.id, name: c.name, cls: ''})),
-    {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'}
-  ].map(c => `
+  const btnHtml = c => `
     <button class="filter-btn${filterCat === c.id ? ' active' : ''}${c.cls}"
-      onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>
-  `).join('');
+      onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>`;
+  document.getElementById('filter-btns-fixed').innerHTML = [
+    {id: '__none__', name: 'カテゴリなし', cls: ''},
+    {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'}
+  ].map(btnHtml).join('');
+  document.getElementById('filter-btns-scroll').innerHTML =
+    [...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0))
+      .map(c => btnHtml({id: c.id, name: c.name, cls: ''})).join('');
 
   renderCatModal();
 
@@ -671,6 +687,26 @@ window.setFilter = function(id) {
   }
   render();
 };
+
+// カテゴリ行：縦・横どちらの指の動き／ホイールでも横スクロールさせる
+const scrollRow = document.getElementById('filter-btns-scroll');
+scrollRow.addEventListener('wheel', (e) => {
+  if (e.deltaY === 0 && e.deltaX === 0) return;
+  e.preventDefault();
+  scrollRow.scrollLeft += e.deltaX - e.deltaY;
+}, { passive: false });
+let _touchX = 0, _touchY = 0, _startLeft = 0;
+scrollRow.addEventListener('touchstart', (e) => {
+  _touchX = e.touches[0].clientX;
+  _touchY = e.touches[0].clientY;
+  _startLeft = scrollRow.scrollLeft;
+}, { passive: true });
+scrollRow.addEventListener('touchmove', (e) => {
+  const dx = e.touches[0].clientX - _touchX;
+  const dy = e.touches[0].clientY - _touchY;
+  scrollRow.scrollLeft = _startLeft - dx - dy;
+  e.preventDefault();
+}, { passive: false });
 </script>
 </body>
 </html>
