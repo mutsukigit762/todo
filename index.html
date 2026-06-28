@@ -471,7 +471,7 @@ window.openChangeCatModal = function(todoId) {
   const list = document.getElementById('change-cat-list');
   list.innerHTML = [
     {id: null, name: 'カテゴリなし', color: '#ddd'},
-    ...categories
+    ...[...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0))
   ].map(c => {
     const todo = todos.find(t => t.id === todoId);
     const active = todo && todo.catId === c.id;
@@ -482,6 +482,7 @@ window.openChangeCatModal = function(todoId) {
         ${active?'<span style="color:#aaa;font-size:12px">✓</span>':''}
       </div>`;
   }).join('');
+  list.closest('.modal-body').scrollTop = 0;
   document.getElementById('change-cat-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
