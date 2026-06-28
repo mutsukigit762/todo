@@ -238,6 +238,7 @@ const PALETTE = ['#4a90a4','#a0876d','#7a8fa6','#8a6d9a','#6d9a7a','#a46d4a','#9
 let todos = [];
 let categories = [];
 let filterCat = '__all__';
+let catLastUsed = {};
 let isSaving = false;  // 保存中フラグ
 let isAnimating = false;
 
@@ -602,7 +603,7 @@ function render() {
   document.getElementById('filter-btns').innerHTML = [
     {id: '__all__', name: 'すべて', cls: ''},
     {id: '__none__', name: 'カテゴリなし', cls: ''},
-    ...categories.map(c => ({id: c.id, name: c.name, cls: ''})),
+    ...[...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0)).map(c => ({id: c.id, name: c.name, cls: ''})),
     {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'}
   ].map(c => `
     <button class="filter-btn${filterCat === c.id ? ' active' : ''}${c.cls}"
@@ -658,6 +659,9 @@ window.setFilter = function(id) {
     filterCat = '__all__';
   } else {
     filterCat = filterCat === id ? '__all__' : id;
+  }
+  if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
+    catLastUsed[filterCat] = Date.now();
   }
   const sel = document.getElementById('cat-select');
   if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
