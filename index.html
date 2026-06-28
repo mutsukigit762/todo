@@ -482,9 +482,9 @@ window.openChangeCatModal = function(todoId) {
         ${active?'<span style="color:#aaa;font-size:12px">✓</span>':''}
       </div>`;
   }).join('');
-  list.closest('.modal-body').scrollTop = 0;
   document.getElementById('change-cat-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => { list.closest('.modal-body').scrollTop = 0; });
 };
 
 window.changeTodoCat = function(catId) {
