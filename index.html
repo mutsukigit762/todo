@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0000ff">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>TODO</title>
 <link rel="apple-touch-icon" href="apple-touch-icon-todo.png">
 <style>
@@ -17,7 +17,7 @@
     font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
     display: flex;
     justify-content: center;
-    padding: 48px 16px 80px;
+    padding: calc(48px + env(safe-area-inset-top)) 16px 80px;
   }
   .wrap { width: 100%; max-width: 480px; }
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
