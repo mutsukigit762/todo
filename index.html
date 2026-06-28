@@ -19,6 +19,13 @@
   .wrap { width: 100%; max-width: 480px; }
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
   .subtitle { font-size: 13px; color: #999; margin-top: 4px; margin-bottom: 32px; }
+  .sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f5f3ef;
+    padding-bottom: 8px;
+  }
   .input-box {
     background: #fff; border-radius: 12px;
     padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px;
@@ -140,6 +147,7 @@ display: flex; align-items: center; gap: 8px;
 <div class="wrap">
   <h1>TODO</h1>
   <div class="subtitle" id="subtitle"></div>
+  <div class="sticky-top">
   <div class="input-box">
     <div class="cat-select-row">
       <select class="cat-select" id="cat-select">
@@ -150,6 +158,7 @@ display: flex; align-items: center; gap: 8px;
       <input id="task-input" placeholder="タスクを入力..." />
       <button class="add-btn" onclick="addTodo()">+</button>
     </div>
+  </div>
   </div>
   <div class="filter-area">
     <div class="filter-btns" id="filter-btns"></div>
