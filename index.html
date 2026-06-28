@@ -123,13 +123,6 @@ display: flex; align-items: center; gap: 8px;
 background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
 user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
-.cat-item.drag-placeholder { background: #e8e6e0; opacity: 0.5; border: 2px dashed #ccc; }
-.drag-handle {
-display: flex; flex-direction: column; gap: 3px;
-padding: 0 4px; flex-shrink: 0; touch-action: none; cursor: grab;
--webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-}
-.drag-handle span { display: block; width: 14px; height: 2px; background: #ccc; border-radius: 1px; }
 .cat-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .cat-name {
 flex: 1; font-size: 16px; border: none; background: transparent;
@@ -149,12 +142,6 @@ background: #1a1a1a; color: #fff; font-size: 16px; cursor: pointer; font-family:
 .modal-close {
 width: 100%; padding: 12px; border-radius: 10px; border: none;
 background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-top: 16px; font-family: inherit;
-}
-.drag-ghost {
-position: fixed; z-index: 999; pointer-events: none;
-background: #fff; border-radius: 8px; padding: 10px 12px;
-box-shadow: 0 8px 28px rgba(0,0,0,0.2);
-display: flex; align-items: center; gap: 8px;
 }
 </style>
 </head>
@@ -222,7 +209,7 @@ display: flex; align-items: center; gap: 8px;
 
 <div class="modal-overlay" id="modal-overlay" onclick="closeCatModal(event)">
   <div class="modal">
-    <div class="modal-header"><h2>カテゴリを管理</h2></div>
+    <div class="modal-header"><h2>カテゴリ一覧</h2></div>
     <div class="modal-body"><div class="cat-list" id="cat-list"></div></div>
     <div class="modal-footer">
       <div class="add-cat-row" style="margin-bottom:8px">
@@ -525,7 +512,6 @@ function renderCatModal() {
   } else {
     list.innerHTML = categories.map(c => `
       <div class="cat-item" data-id="${c.id}">
-        <div class="drag-handle" data-handle="true"><span></span><span></span><span></span></div>
         <div class="cat-color" style="background:${c.color}"></div>
         <input class="cat-name" value="${escapeHtml(c.name)}"
           onchange="renameCategory('${c.id}', this.value)"
@@ -539,82 +525,6 @@ function renderCatModal() {
     '<option value="__new__">＋ 新規カテゴリ</option>' +
     categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
   sel.value = cur;
-  initDragSort();
-}
-
-let _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0, _hiddenItem: null };
-
-function _dragMove(e) {
-  if (!_drag.ghost) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  _drag.ghost.style.left = (_drag.ghost.getBoundingClientRect().left) + 'px';
-  _drag.ghost.style.top = (touch.clientY - _drag.offsetY) + 'px';
-  const siblings = [..._drag.list.querySelectorAll('.cat-item:not(.drag-placeholder)')];
-  let inserted = false;
-  for (const sib of siblings) {
-    const r = sib.getBoundingClientRect();
-    if (touch.clientY < r.top + r.height / 2) { _drag.list.insertBefore(_drag.placeholder, sib); inserted = true; break; }
-  }
-  if (!inserted) _drag.list.appendChild(_drag.placeholder);
-}
-
-function _dragEnd() {
-  if (!_drag.ghost) return;
-  const allEls = [..._drag.list.children];
-  const newOrder = [];
-  for (const el of allEls) {
-    if (el === _drag._hiddenItem) continue;
-    if (el === _drag.placeholder) { const cat = categories.find(c => c.id === _drag.dragId); if (cat) newOrder.push(cat); }
-    else if (el.dataset && el.dataset.id) { const cat = categories.find(c => c.id === el.dataset.id); if (cat) newOrder.push(cat); }
-  }
-  if (newOrder.length === categories.length) categories = newOrder;
-  scheduleSave();
-  _drag.ghost.remove();
-  _drag.placeholder.remove();
-  if (_drag._hiddenItem) _drag._hiddenItem.remove();
-  _drag = { ghost: null, placeholder: null, dragId: null, list: null, offsetX: 0, offsetY: 0, _hiddenItem: null };
-  renderCatModal(); render();
-}
-
-document.addEventListener('touchmove', _dragMove, { passive: false });
-document.addEventListener('touchend', _dragEnd);
-
-function initDragSort() {
-  const list = document.getElementById('cat-list');
-  if (!list) return;
-  list.querySelectorAll('[data-handle]').forEach(handle => {
-    handle.addEventListener('touchstart', e => {
-      e.preventDefault();
-      const item = handle.closest('.cat-item');
-      if (!item) return;
-      const touch = e.touches[0];
-      const rect = item.getBoundingClientRect();
-      _drag.dragId = item.dataset.id;
-      _drag.list = list;
-      _drag.offsetX = touch.clientX - rect.left;
-      _drag.offsetY = touch.clientY - rect.top;
-      _drag.placeholder = document.createElement('div');
-      _drag.placeholder.className = 'cat-item drag-placeholder';
-      _drag.placeholder.style.height = rect.height + 'px';
-      item.parentNode.insertBefore(_drag.placeholder, item);
-      item.style.visibility = 'hidden';
-      item.style.position = 'absolute';
-      item.style.pointerEvents = 'none';
-      _drag._hiddenItem = item;
-      _drag.ghost = document.createElement('div');
-      _drag.ghost.className = 'drag-ghost';
-      _drag.ghost.style.width = rect.width + 'px';
-      _drag.ghost.style.left = rect.left + 'px';
-      _drag.ghost.style.top = rect.top + 'px';
-      const cat = categories.find(c => c.id === _drag.dragId);
-      _drag.ghost.innerHTML = `
-        <div class="drag-handle"><span></span><span></span><span></span></div>
-        <div class="cat-color" style="background:${cat?.color}"></div>
-        <span style="font-size:16px;font-family:inherit">${escapeHtml(cat?.name||'')}</span>`;
-      document.body.appendChild(_drag.ghost);
-    }, { passive: false });
-  });
 }
 
 function render() {
