@@ -605,7 +605,6 @@ function render() {
 
   const doneCount = todos.filter(t => t.done).length;
   document.getElementById('filter-btns').innerHTML = [
-    {id: '__all__', name: 'すべて', cls: ''},
     {id: '__none__', name: 'カテゴリなし', cls: ''},
     ...[...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0)).map(c => ({id: c.id, name: c.name, cls: ''})),
     {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'}
