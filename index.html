@@ -120,16 +120,19 @@ display: flex; flex-direction: column;
 .cat-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 0; padding-bottom: 8px; }
 .cat-item {
 display: flex; align-items: center; gap: 8px;
-background: #f8f8f8; border-radius: 8px; padding: 10px 12px;
+background: #f8f8f8; border-radius: 8px; padding: 10px 12px; cursor: pointer;
 user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 .cat-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .cat-name {
-flex: 1; font-size: 16px; border: none; background: transparent;
-outline: none; font-family: inherit; cursor: text; padding: 0;
+flex: 1; font-size: 16px; font-family: inherit;
 }
-.cat-name:focus { border-bottom: 1.5px solid #ccc; }
-.cat-del { border: none; background: none; cursor: pointer; color: #ccc; font-size: 16px; line-height: 1; }
+.cat-name-input {
+flex: 1; font-size: 16px; border: none; background: transparent;
+outline: none; font-family: inherit; padding: 0; border-bottom: 1.5px solid #ccc;
+}
+.cat-edit { border: none; background: none; cursor: pointer; color: #bbb; line-height: 0; padding: 0; flex-shrink: 0; display: flex; align-items: center; }
+.cat-del { border: none; background: none; cursor: pointer; color: #ccc; font-size: 16px; line-height: 1; flex-shrink: 0; }
 .add-cat-row { display: flex; gap: 8px; }
 .add-cat-input {
 flex: 1; border: 1.5px solid #e8e8e8; border-radius: 8px;
@@ -427,6 +430,37 @@ window.renameCategory = function(id, name) {
   scheduleSave(); render();
 };
 
+// カテゴリ一覧で箱タップ → ホームのカテゴリボタンと同じ動作（フィルタして閉じる）
+window.filterFromCatModal = function(id) {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  setFilter(id);
+};
+
+// 鉛筆タップ → その行の名前をインライン編集
+window.startEditCat = function(id) {
+  const item = document.querySelector(`.cat-item[data-id="${id}"]`);
+  if (!item) return;
+  const nameEl = item.querySelector('.cat-name');
+  if (!nameEl) return;
+  const cat = categories.find(c => c.id === id);
+  const input = document.createElement('input');
+  input.className = 'cat-name-input';
+  input.value = cat ? cat.name : '';
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const commit = () => {
+    if (done) return;
+    done = true;
+    renameCategory(id, input.value);
+    renderCatModal();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+};
+
 window.deleteCategory = function(id) {
   categories = categories.filter(c => c.id !== id);
   todos = todos.map(t => t.catId === id ? {...t, catId: null} : t);
@@ -511,12 +545,11 @@ function renderCatModal() {
     list.innerHTML = '<div style="color:#bbb;font-size:13px;text-align:center;padding:8px 0">カテゴリがありません</div>';
   } else {
     list.innerHTML = categories.map(c => `
-      <div class="cat-item" data-id="${c.id}">
+      <div class="cat-item" data-id="${c.id}" onclick="filterFromCatModal('${c.id}')">
         <div class="cat-color" style="background:${c.color}"></div>
-        <input class="cat-name" value="${escapeHtml(c.name)}"
-          onchange="renameCategory('${c.id}', this.value)"
-          onblur="renameCategory('${c.id}', this.value)" />
-        <button class="cat-del" onclick="deleteCategory('${c.id}')">×</button>
+        <span class="cat-name">${escapeHtml(c.name)}</span>
+        <button class="cat-edit" onclick="event.stopPropagation(); startEditCat('${c.id}')" aria-label="編集"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="cat-del" onclick="event.stopPropagation(); deleteCategory('${c.id}')">×</button>
       </div>`).join('');
   }
   const sel = document.getElementById('cat-select');
@@ -597,6 +630,8 @@ window.setFilter = function(id) {
   const sel = document.getElementById('cat-select');
   if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
     sel.value = filterCat;
+    catLastUsed[filterCat] = Date.now();  // 触られた扱い → 先頭へ
+    scheduleSave();
   } else {
     sel.value = '';
   }
