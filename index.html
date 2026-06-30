@@ -17,22 +17,35 @@
     font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
     display: flex;
     justify-content: center;
-    padding: calc(16px + env(safe-area-inset-top)) 16px 80px;
+    padding: calc(16px + env(safe-area-inset-top)) 0 80px;
+    overflow-x: hidden;
   }
-  .wrap { width: 100%; max-width: 480px; }
+  .wrap { width: 100%; max-width: 480px; padding: 0 16px; }
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
-  .subtitle { font-size: 13px; color: #999; margin-top: 4px; margin-bottom: 12px; }
-  .sticky-top {
-    position: sticky;
-    top: env(safe-area-inset-top);
-    z-index: 10;
-    background: #f5f3ef;
-    padding-bottom: 0;
-    margin-left: -16px;
-    margin-right: -16px;
-    padding-left: 16px;
-    padding-right: 16px;
+  .subtitle { font-size: 13px; color: #999; margin-top: 4px; margin-bottom: 12px; min-height: 16px; }
+
+  /* ---- タブ ---- */
+  .tabbar {
+    display: flex; gap: 4px; margin-bottom: 14px;
+    background: #eae8e3; border-radius: 10px; padding: 3px;
   }
+  .tabbtn {
+    flex: 1; border: none; background: transparent; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 600; color: #999;
+    padding: 8px 0; border-radius: 8px; transition: all 0.2s;
+  }
+  .tabbtn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* ---- スワイプ用ビューポート ---- */
+  .pager-viewport { overflow: hidden; width: 100%; }
+  .pager {
+    display: flex; width: 200%;
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  .pager.dragging { transition: none; }
+  .page { width: 50%; flex-shrink: 0; }
+  .page-inner { padding: 0 2px; }
+
   .input-box {
     background: #fff; border-radius: 12px;
     padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px;
@@ -44,11 +57,11 @@
     background: #f8f8f8; outline: none; font-family: inherit;
   }
   .input-row { display: flex; gap: 8px; align-items: center; }
-  #task-input {
+  .task-input {
     flex: 1; border: none; outline: none; font-size: 16px; color: #1a1a1a;
     background: transparent; padding: 4px 0; font-family: inherit;
   }
-  #task-input::placeholder { color: #bbb; }
+  .task-input::placeholder { color: #bbb; }
   .add-btn {
     width: 32px; height: 32px; border-radius: 8px;
     border: none; background: #1a1a1a; color: #fff;
@@ -103,6 +116,18 @@
   .sync-status { font-size: 11px; color: #bbb; text-align: right; padding-top: 4px; min-height: 16px; }
   .cat-manage-btn { font-size: 12px; color: #aaa; background: none; border: none; cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit; }
 
+  /* ---- ルールカード：枠のみ・背景は body と同じ ---- */
+  .rule-item {
+    background: #f5f3ef; border: 1.5px solid #d8d4cc; border-radius: 10px;
+    padding: 12px 14px; display: flex; align-items: flex-start; gap: 12px;
+    margin-bottom: 8px; overflow: hidden;
+  }
+  .rule-text {
+    flex: 1; font-size: 16px; color: #1a1a1a; border: none; outline: none;
+    background: transparent; font-family: inherit; padding: 0; min-width: 0;
+    word-break: break-all; line-height: 1.5; cursor: text;
+  }
+
 .modal-overlay {
 display: none; position: fixed; inset: 0;
 background: rgba(0,0,0,0.4); z-index: 100;
@@ -115,8 +140,8 @@ width: 100%; max-width: 480px;
 max-height: 80vh;
 display: flex; flex-direction: column;
 }
-#modal-overlay { align-items: center; }
-#modal-overlay .modal { max-height: 92vh; border-radius: 20px; margin: 0 12px; overflow: hidden; }
+#modal-overlay, #rule-modal-overlay { align-items: center; }
+#modal-overlay .modal, #rule-modal-overlay .modal { max-height: 92vh; border-radius: 20px; margin: 0 12px; overflow: hidden; }
 .modal-header { padding: 24px 20px 12px; flex-shrink: 0; }
 .modal-body { overflow-y: auto; flex: 1; padding: 0 20px; }
 .modal-footer { padding: 12px 20px 40px; flex-shrink: 0; background: #fff; border-top: 1px solid #f0eeea; }
@@ -159,31 +184,72 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
 <div class="wrap">
   <h1>TODO</h1>
   <div class="subtitle" id="subtitle"></div>
-  <div class="sticky-top">
-  <div class="input-box">
-    <div class="cat-select-row">
-      <select class="cat-select" id="cat-select">
-        <option value="">カテゴリなし</option>
-      </select>
-    </div>
-    <div class="input-row">
-      <input id="task-input" placeholder="タスクを入力..." />
-      <button class="add-btn" onclick="addTodo()">+</button>
+
+  <div class="tabbar">
+    <button class="tabbtn active" id="tab-todo" onclick="switchTab(0)">TODO</button>
+    <button class="tabbtn" id="tab-rule" onclick="switchTab(1)">ルール</button>
+  </div>
+
+  <div class="pager-viewport" id="pager-viewport">
+    <div class="pager" id="pager">
+
+      <!-- ============ TODOページ ============ -->
+      <div class="page">
+        <div class="page-inner">
+          <div class="input-box">
+            <div class="cat-select-row">
+              <select class="cat-select" id="cat-select">
+                <option value="">カテゴリなし</option>
+              </select>
+            </div>
+            <div class="input-row">
+              <input id="task-input" class="task-input" placeholder="タスクを入力..." />
+              <button class="add-btn" onclick="addTodo()">+</button>
+            </div>
+          </div>
+          <div class="filter-area">
+            <div class="filter-row1">
+              <div class="filter-btns-fixed" id="filter-btns-fixed"></div>
+              <button class="cat-manage-btn" onclick="openCatModal()">カテゴリ一覧</button>
+            </div>
+            <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
+          </div>
+          <div class="todo-list" id="todo-list"></div>
+          <div class="count" id="count"></div>
+        </div>
+      </div>
+
+      <!-- ============ ルールページ ============ -->
+      <div class="page">
+        <div class="page-inner">
+          <div class="input-box">
+            <div class="cat-select-row">
+              <select class="cat-select" id="rule-cat-select">
+                <option value="">カテゴリなし</option>
+              </select>
+            </div>
+            <div class="input-row">
+              <input id="rule-input" class="task-input" placeholder="ルールを入力..." />
+              <button class="add-btn" onclick="addRule()">+</button>
+            </div>
+          </div>
+          <div class="filter-area">
+            <div class="filter-row1">
+              <button class="cat-manage-btn" onclick="openRuleCatModal()">カテゴリ一覧</button>
+            </div>
+            <div class="filter-btns-scroll" id="rule-filter-btns-scroll"></div>
+          </div>
+          <div class="todo-list" id="rule-list"></div>
+        </div>
+      </div>
+
     </div>
   </div>
-  <div class="filter-area">
-    <div class="filter-row1">
-      <div class="filter-btns-fixed" id="filter-btns-fixed"></div>
-      <button class="cat-manage-btn" onclick="openCatModal()">カテゴリ一覧</button>
-    </div>
-    <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
-  </div>
-  </div>
-  <div class="todo-list" id="todo-list"></div>
-  <div class="count" id="count"></div>
+
   <div class="sync-status" id="sync-status">読み込み中…</div>
 </div>
 
+<!-- ===== TODO カテゴリ系モーダル ===== -->
 <div class="modal-overlay" id="add-cat-from-select-overlay" onclick="closeAddCatFromSelectModal(event)" style="align-items:center">
   <div class="modal" style="border-radius:16px;max-width:340px;margin:0 16px;padding:24px 20px 32px">
     <h2 style="margin-bottom:16px">新規カテゴリ</h2>
@@ -231,6 +297,54 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
   </div>
 </div>
 
+<!-- ===== ルール カテゴリ系モーダル ===== -->
+<div class="modal-overlay" id="rule-add-cat-from-select-overlay" onclick="closeRuleAddCatFromSelectModal(event)" style="align-items:center">
+  <div class="modal" style="border-radius:16px;max-width:340px;margin:0 16px;padding:24px 20px 32px">
+    <h2 style="margin-bottom:16px">新規カテゴリ</h2>
+    <div class="add-cat-row">
+      <input class="add-cat-input" id="rule-add-cat-from-select-input" placeholder="カテゴリ名..." />
+      <button class="add-cat-btn" onclick="addRuleCategoryFromSelect()">追加</button>
+    </div>
+    <button class="modal-close" onclick="closeRuleAddCatFromSelectModal()">キャンセル</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rule-change-cat-overlay" onclick="closeRuleChangeCatModal(event)">
+  <div class="modal">
+    <div class="modal-header"><h2>カテゴリを変更</h2></div>
+    <div class="modal-body"><div class="cat-list" id="rule-change-cat-list"></div></div>
+    <div class="modal-footer">
+      <button class="cat-manage-btn" style="margin-bottom:8px" onclick="openRuleAddCatFromChangeModal()">＋ カテゴリを追加</button>
+      <button class="modal-close" style="margin-top:0" onclick="closeRuleChangeCatModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rule-add-cat-from-change-overlay" onclick="closeRuleAddCatFromChangeModal(event)" style="align-items:center">
+  <div class="modal" style="border-radius:16px;max-width:340px;margin:0 16px;padding:24px 20px 32px">
+    <h2 style="margin-bottom:16px">カテゴリを追加</h2>
+    <div class="add-cat-row">
+      <input class="add-cat-input" id="rule-add-cat-from-change-input" placeholder="カテゴリ名..." />
+      <button class="add-cat-btn" onclick="addRuleCategoryFromChange()">追加</button>
+    </div>
+    <button class="modal-close" onclick="closeRuleAddCatFromChangeModal()">キャンセル</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rule-modal-overlay" onclick="closeRuleCatModal(event)">
+  <div class="modal">
+    <div class="modal-header"><h2>カテゴリ一覧</h2></div>
+    <div class="modal-body"><div class="cat-list" id="rule-cat-list"></div></div>
+    <div class="modal-footer">
+      <div class="add-cat-row" style="margin-bottom:8px">
+        <input class="add-cat-input" id="rule-new-cat-input" placeholder="新しいカテゴリ名..." />
+        <button class="add-cat-btn" onclick="addRuleCategory()">追加</button>
+      </div>
+      <button class="modal-close" style="margin-top:0" onclick="closeRuleCatModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -254,7 +368,14 @@ let todos = [];
 let categories = [];
 let filterCat = '__all__';
 let catLastUsed = {};
-let isSaving = false;  // 保存中フラグ
+
+// ルール用（todoと完全独立）
+let rules = [];
+let ruleCategories = [];
+let ruleFilterCat = '__all__';
+let ruleCatLastUsed = {};
+
+let isSaving = false;
 let isAnimating = false;
 
 function setSyncStatus(msg) {
@@ -264,7 +385,7 @@ function setSyncStatus(msg) {
 async function saveToCloud() {
   isSaving = true;
   try {
-    await setDoc(DATA_DOC, { todos, categories, catLastUsed });
+    await setDoc(DATA_DOC, { todos, categories, catLastUsed, rules, ruleCategories, ruleCatLastUsed });
     setSyncStatus('');
   } catch(e) {
     setSyncStatus('保存失敗');
@@ -276,21 +397,26 @@ async function saveToCloud() {
 
 function scheduleSave() {
   setSyncStatus('保存中…');
-  saveToCloud();  // 即時保存
+  saveToCloud();
 }
 
 onSnapshot(DATA_DOC, (snap) => {
-  // 保存中・アニメーション中はonSnapshotによる上書きをスキップ
   if (isSaving || isAnimating) return;
-  if (!snap.exists()) { setSyncStatus(''); render(); return; }
+  if (!snap.exists()) { setSyncStatus(''); render(); renderRules(); return; }
   const data = snap.data();
   todos = (data.todos || []).map(t => ({...t, id: Number(t.id) || t.id}));
   categories = (data.categories || []).map((c, i) => ({
     ...c, color: c.color || PALETTE[i % PALETTE.length]
   }));
   catLastUsed = data.catLastUsed || {};
+  rules = (data.rules || []).map(r => ({...r, id: Number(r.id) || r.id}));
+  ruleCategories = (data.ruleCategories || []).map((c, i) => ({
+    ...c, color: c.color || PALETTE[i % PALETTE.length]
+  }));
+  ruleCatLastUsed = data.ruleCatLastUsed || {};
   setSyncStatus('');
   render();
+  renderRules();
 }, (err) => {
   setSyncStatus('接続エラー');
   console.error(err);
@@ -298,10 +424,80 @@ onSnapshot(DATA_DOC, (snap) => {
 
 function catColor(catId) { const c = categories.find(c => c.id === catId); return c ? c.color : null; }
 function catName(catId) { const c = categories.find(c => c.id === catId); return c ? c.name : null; }
+function ruleCatColor(catId) { const c = ruleCategories.find(c => c.id === catId); return c ? c.color : null; }
+function ruleCatName(catId) { const c = ruleCategories.find(c => c.id === catId); return c ? c.name : null; }
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* ============================================================
+   タブ切り替え & スワイプ
+   ============================================================ */
+let currentTab = 0;
+const pager = document.getElementById('pager');
+const viewport = document.getElementById('pager-viewport');
+
+window.switchTab = function(idx) {
+  currentTab = idx;
+  pager.style.transform = `translateX(-${idx * 50}%)`;
+  document.getElementById('tab-todo').classList.toggle('active', idx === 0);
+  document.getElementById('tab-rule').classList.toggle('active', idx === 1);
+};
+
+// スワイプ判定：横移動が縦移動より明確に大きいときだけページ送り。
+// カテゴリ行の横スクロール内で始まったジェスチャは無視する。
+let startX = 0, startY = 0, dragging = false, decided = false, isHoriz = false, startedInScroller = false;
+
+function isInScroller(target) {
+  return !!(target.closest && target.closest('.filter-btns-scroll'));
+}
+
+viewport.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+  dragging = true; decided = false; isHoriz = false;
+  startedInScroller = isInScroller(e.target);
+}, { passive: true });
+
+viewport.addEventListener('touchmove', (e) => {
+  if (!dragging) return;
+  const dx = e.touches[0].clientX - startX;
+  const dy = e.touches[0].clientY - startY;
+  if (!decided) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    // 横移動が縦の1.4倍以上で、かつ横スクロール領域発進でないときだけページ送り
+    isHoriz = Math.abs(dx) > Math.abs(dy) * 1.4 && !startedInScroller;
+    decided = true;
+    if (isHoriz) pager.classList.add('dragging');
+  }
+  if (!isHoriz) return;
+  e.preventDefault();
+  let offset = -currentTab * 50;
+  const pct = (dx / viewport.offsetWidth) * 50;
+  let next = offset + pct;
+  // 端で引っ張りすぎないよう軽く抵抗
+  if (next > 0) next = next * 0.35;
+  if (next < -50) next = -50 + (next + 50) * 0.35;
+  pager.style.transform = `translateX(${next}%)`;
+}, { passive: false });
+
+viewport.addEventListener('touchend', (e) => {
+  if (!dragging) return;
+  dragging = false;
+  if (!isHoriz) return;
+  pager.classList.remove('dragging');
+  const dx = e.changedTouches[0].clientX - startX;
+  const threshold = viewport.offsetWidth * 0.22;
+  let target = currentTab;
+  if (dx < -threshold && currentTab === 0) target = 1;
+  else if (dx > threshold && currentTab === 1) target = 0;
+  switchTab(target);
+});
+
+/* ============================================================
+   TODO（既存ロジックそのまま）
+   ============================================================ */
 window.addTodo = function() {
   const input = document.getElementById('task-input');
   const text = input.value.trim();
@@ -437,16 +633,14 @@ window.renameCategory = function(id, name) {
   scheduleSave(); render();
 };
 
-// カテゴリ一覧で箱タップ → ホームのカテゴリボタンと同じ動作（フィルタして閉じる）
 window.filterFromCatModal = function(id) {
   document.getElementById('modal-overlay').classList.remove('open');
   document.body.style.overflow = '';
   setFilter(id);
 };
 
-// 鉛筆タップ → その行の名前をインライン編集
 window.startEditCat = function(id) {
-  const item = document.querySelector(`.cat-item[data-id="${id}"]`);
+  const item = document.querySelector(`#cat-list .cat-item[data-id="${id}"]`);
   if (!item) return;
   const nameEl = item.querySelector('.cat-name');
   if (!nameEl) return;
@@ -643,7 +837,7 @@ window.setFilter = function(id) {
   const sel = document.getElementById('cat-select');
   if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
     sel.value = filterCat;
-    catLastUsed[filterCat] = Date.now();  // 触られた扱い → 先頭へ
+    catLastUsed[filterCat] = Date.now();
     scheduleSave();
   } else {
     sel.value = '';
@@ -651,14 +845,287 @@ window.setFilter = function(id) {
   render();
 };
 
-// カテゴリ行：PC/トラックパッドの縦ホイールでも横スクロールさせる。
-// スマホはネイティブの横スワイプ（慣性付き）に任せる。
-const scrollRow = document.getElementById('filter-btns-scroll');
-scrollRow.addEventListener('wheel', (e) => {
-  if (e.deltaY === 0 && e.deltaX === 0) return;
-  e.preventDefault();
-  scrollRow.scrollLeft += e.deltaX - e.deltaY;
-}, { passive: false });
+/* ============================================================
+   ルール（todoと独立した別データ）
+   ============================================================ */
+window.addRule = function() {
+  const input = document.getElementById('rule-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const catId = document.getElementById('rule-cat-select').value || null;
+  if (catId === '__new__') return;
+  rules.push({ id: Date.now(), text, catId });
+  if (catId) ruleCatLastUsed[catId] = Date.now();
+  input.value = '';
+  scheduleSave(); renderRules();
+};
+
+document.getElementById('rule-cat-select').addEventListener('change', function() {
+  if (this.value === '__new__') {
+    this.value = '';
+    document.getElementById('rule-add-cat-from-select-input').value = '';
+    document.getElementById('rule-add-cat-from-select-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('rule-add-cat-from-select-input').focus(), 100);
+  }
+});
+
+window.closeRuleAddCatFromSelectModal = function(e) {
+  if (!e || e.target === document.getElementById('rule-add-cat-from-select-overlay')) {
+    document.getElementById('rule-add-cat-from-select-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+};
+
+window.addRuleCategoryFromSelect = function() {
+  const input = document.getElementById('rule-add-cat-from-select-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const usedColors = ruleCategories.map(c => c.color);
+  const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[ruleCategories.length % PALETTE.length];
+  const newCat = { id: Date.now().toString(), name, color };
+  ruleCategories.push(newCat);
+  input.value = '';
+  scheduleSave();
+  window.closeRuleAddCatFromSelectModal();
+  renderRules();
+  setTimeout(() => { document.getElementById('rule-cat-select').value = newCat.id; }, 50);
+};
+
+document.getElementById('rule-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing) window.addRule();
+});
+
+window.deleteRule = function(id) {
+  rules = rules.filter(r => r.id !== id);
+  scheduleSave(); renderRules();
+};
+
+window.editRuleText = function(id, text) {
+  text = text.trim();
+  if (!text) return;
+  rules = rules.map(r => r.id === id ? {...r, text} : r);
+  scheduleSave();
+};
+
+window.addRuleCategory = function() {
+  const input = document.getElementById('rule-new-cat-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const usedColors = ruleCategories.map(c => c.color);
+  const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[ruleCategories.length % PALETTE.length];
+  ruleCategories.push({ id: Date.now().toString(), name, color });
+  input.value = '';
+  scheduleSave(); renderRuleCatModal(); renderRules();
+};
+
+window.renameRuleCategory = function(id, name) {
+  name = name.trim();
+  if (!name) return;
+  ruleCategories = ruleCategories.map(c => c.id === id ? {...c, name} : c);
+  scheduleSave(); renderRules();
+};
+
+window.filterFromRuleCatModal = function(id) {
+  document.getElementById('rule-modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  setRuleFilter(id);
+};
+
+window.startEditRuleCat = function(id) {
+  const item = document.querySelector(`#rule-cat-list .cat-item[data-id="${id}"]`);
+  if (!item) return;
+  const nameEl = item.querySelector('.cat-name');
+  if (!nameEl) return;
+  const cat = ruleCategories.find(c => c.id === id);
+  const input = document.createElement('input');
+  input.className = 'cat-name-input';
+  input.value = cat ? cat.name : '';
+  nameEl.replaceWith(input);
+  input.focus();
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
+  let done = false;
+  const commit = () => {
+    if (done) return;
+    done = true;
+    renameRuleCategory(id, input.value);
+    renderRuleCatModal();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+};
+
+window.deleteRuleCategory = function(id) {
+  const cat = ruleCategories.find(c => c.id === id);
+  const name = cat ? cat.name : 'このカテゴリ';
+  if (!confirm(`「${name}」を削除しますか？\nこのカテゴリのルールは「カテゴリなし」になります。`)) return;
+  ruleCategories = ruleCategories.filter(c => c.id !== id);
+  rules = rules.map(r => r.catId === id ? {...r, catId: null} : r);
+  scheduleSave(); renderRuleCatModal(); renderRules();
+};
+
+window.openRuleAddCatFromChangeModal = function() {
+  document.getElementById('rule-add-cat-from-change-input').value = '';
+  document.getElementById('rule-add-cat-from-change-overlay').classList.add('open');
+};
+
+window.closeRuleAddCatFromChangeModal = function(e) {
+  if (!e || e.target === document.getElementById('rule-add-cat-from-change-overlay'))
+    document.getElementById('rule-add-cat-from-change-overlay').classList.remove('open');
+};
+
+window.addRuleCategoryFromChange = function() {
+  const input = document.getElementById('rule-add-cat-from-change-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const usedColors = ruleCategories.map(c => c.color);
+  const color = PALETTE.find(p => !usedColors.includes(p)) || PALETTE[ruleCategories.length % PALETTE.length];
+  ruleCategories.push({ id: Date.now().toString(), name, color });
+  input.value = '';
+  scheduleSave();
+  window.closeRuleAddCatFromChangeModal();
+  window.openRuleChangeCatModal(ruleChangeCatTargetId);
+};
+
+let ruleChangeCatTargetId = null;
+window.openRuleChangeCatModal = function(ruleId) {
+  ruleChangeCatTargetId = ruleId;
+  const list = document.getElementById('rule-change-cat-list');
+  list.innerHTML = [
+    {id: null, name: 'カテゴリなし', color: '#ddd'},
+    ...[...ruleCategories].sort((a, b) => (ruleCatLastUsed[b.id] || 0) - (ruleCatLastUsed[a.id] || 0))
+  ].map(c => {
+    const rule = rules.find(r => r.id === ruleId);
+    const active = rule && rule.catId === c.id;
+    return `
+      <div class="cat-item" onclick="changeRuleCat('${c.id}')" style="cursor:pointer;${active?'background:#f0f0f0':''}">
+        <div class="cat-color" style="background:${c.color||'#ddd'}"></div>
+        <span class="cat-name" style="cursor:pointer">${escapeHtml(c.name)}</span>
+        ${active?'<span style="color:#aaa;font-size:12px">✓</span>':''}
+      </div>`;
+  }).join('');
+  document.getElementById('rule-change-cat-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => { list.closest('.modal-body').scrollTop = 0; });
+};
+
+window.changeRuleCat = function(catId) {
+  const realId = catId === 'null' ? null : catId;
+  rules = rules.map(r => r.id === ruleChangeCatTargetId ? {...r, catId: realId} : r);
+  if (realId) ruleCatLastUsed[realId] = Date.now();
+  scheduleSave(); renderRules(); window.closeRuleChangeCatModal();
+};
+
+window.closeRuleChangeCatModal = function(e) {
+  if (!e || e.target === document.getElementById('rule-change-cat-overlay')) {
+    document.getElementById('rule-change-cat-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+};
+
+window.openRuleCatModal = function() {
+  renderRuleCatModal();
+  document.getElementById('rule-modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeRuleCatModal = function(e) {
+  if (!e || e.target === document.getElementById('rule-modal-overlay')) {
+    document.getElementById('rule-modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+};
+
+function renderRuleCatModal() {
+  const list = document.getElementById('rule-cat-list');
+  if (ruleCategories.length === 0) {
+    list.innerHTML = '<div style="color:#bbb;font-size:13px;text-align:center;padding:8px 0">カテゴリがありません</div>';
+  } else {
+    list.innerHTML = ruleCategories.map(c => `
+      <div class="cat-item" data-id="${c.id}" onclick="filterFromRuleCatModal('${c.id}')">
+        <div class="cat-color" style="background:${c.color}"></div>
+        <span class="cat-name">${escapeHtml(c.name)}</span>
+        <div class="cat-actions">
+        <button class="cat-edit" onclick="event.stopPropagation(); startEditRuleCat('${c.id}')" aria-label="編集"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="cat-del" onclick="event.stopPropagation(); deleteRuleCategory('${c.id}')" aria-label="削除"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+        </div>
+      </div>`).join('');
+  }
+  const sel = document.getElementById('rule-cat-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">カテゴリなし</option>' +
+    '<option value="__new__">＋ 新規カテゴリ</option>' +
+    ruleCategories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  sel.value = cur;
+}
+
+function renderRules() {
+  // フィルタボタン：「カテゴリなし」＋その他を同じ1行に
+  const btnHtml = c => `
+    <button class="filter-btn${ruleFilterCat === c.id ? ' active' : ''}"
+      onclick="setRuleFilter('${c.id}')">${escapeHtml(c.name)}</button>`;
+  const noneBtn = btnHtml({id: '__none__', name: 'カテゴリなし'});
+  const catBtns = [...ruleCategories].sort((a, b) => (ruleCatLastUsed[b.id] || 0) - (ruleCatLastUsed[a.id] || 0))
+    .map(c => btnHtml({id: c.id, name: c.name})).join('');
+  document.getElementById('rule-filter-btns-scroll').innerHTML = noneBtn + catBtns;
+
+  renderRuleCatModal();
+
+  const filtered = rules.filter(r => {
+    if (ruleFilterCat === '__none__') return !r.catId;
+    if (ruleFilterCat === '__all__') return true;
+    return r.catId === ruleFilterCat;
+  });
+  filtered.reverse();
+
+  const list = document.getElementById('rule-list');
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty">ルールがありません</div>`;
+  } else {
+    list.innerHTML = filtered.map(rule => {
+      const color = rule.catId ? ruleCatColor(rule.catId) : null;
+      const name = rule.catId ? ruleCatName(rule.catId) : null;
+      return `
+        <div class="rule-item" data-rule-id="${rule.id}">
+          <div class="rule-text" contenteditable="true"
+            onblur="editRuleText(${rule.id}, this.innerText)"
+            >${escapeHtml(rule.text)}</div>
+          <span class="tag${name?'':' no-cat'}"
+            style="${name?`background:${color}22;color:${color}`:''}"
+            onclick="openRuleChangeCatModal(${rule.id})">${name?escapeHtml(name):'未分類'}</span>
+          <button class="del-btn" onclick="deleteRule(${rule.id})">×</button>
+        </div>`;
+    }).join('');
+  }
+}
+
+window.setRuleFilter = function(id) {
+  if (id === '__all__') {
+    ruleFilterCat = '__all__';
+  } else {
+    ruleFilterCat = ruleFilterCat === id ? '__all__' : id;
+  }
+  const sel = document.getElementById('rule-cat-select');
+  if (ruleFilterCat !== '__all__' && ruleFilterCat !== '__none__') {
+    sel.value = ruleFilterCat;
+    ruleCatLastUsed[ruleFilterCat] = Date.now();
+    scheduleSave();
+  } else {
+    sel.value = '';
+  }
+  renderRules();
+};
+
+/* カテゴリ行：PC/トラックパッドの縦ホイールでも横スクロール */
+['filter-btns-scroll', 'rule-filter-btns-scroll'].forEach(rowId => {
+  const scrollRow = document.getElementById(rowId);
+  scrollRow.addEventListener('wheel', (e) => {
+    if (e.deltaY === 0 && e.deltaX === 0) return;
+    e.preventDefault();
+    scrollRow.scrollLeft += e.deltaX - e.deltaY;
+  }, { passive: false });
+});
 </script>
 </body>
 </html>
