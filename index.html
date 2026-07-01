@@ -26,7 +26,7 @@
 
   /* ---- タブ ---- */
   .tabbar {
-    display: flex; gap: 4px; margin-bottom: 14px;
+    display: flex; gap: 4px; margin-top: 4px; margin-bottom: 10px;
     background: #eae8e3; border-radius: 10px; padding: 3px;
   }
   .tabbtn {
@@ -182,13 +182,11 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
 <body>
 <div style="position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#f5f3ef;z-index:9999;"></div>
 <div class="wrap">
-  <h1>TODO</h1>
-  <div class="subtitle" id="subtitle"></div>
-
   <div class="tabbar">
     <button class="tabbtn active" id="tab-todo" onclick="switchTab(0)">TODO</button>
-    <button class="tabbtn" id="tab-rule" onclick="switchTab(1)">ルール</button>
+    <button class="tabbtn" id="tab-rule" onclick="switchTab(1)">RULES</button>
   </div>
+  <div class="subtitle" id="subtitle"></div>
 
   <div class="pager-viewport" id="pager-viewport">
     <div class="pager" id="pager">
@@ -442,6 +440,7 @@ window.switchTab = function(idx) {
   pager.style.transform = `translateX(-${idx * 50}%)`;
   document.getElementById('tab-todo').classList.toggle('active', idx === 0);
   document.getElementById('tab-rule').classList.toggle('active', idx === 1);
+  updateSubtitle();
 };
 
 // スワイプ判定：横移動が縦移動より明確に大きいときだけページ送り。
@@ -767,10 +766,18 @@ function renderCatModal() {
   sel.value = cur;
 }
 
+function updateSubtitle() {
+  const el = document.getElementById('subtitle');
+  if (currentTab === 0) {
+    const remaining = todos.filter(t => !t.done).length;
+    el.textContent = todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
+  } else {
+    el.textContent = rules.length === 0 ? '' : `${rules.length} 件`;
+  }
+}
+
 function render() {
-  const remaining = todos.filter(t => !t.done).length;
-  document.getElementById('subtitle').textContent =
-    todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
+  updateSubtitle();
 
   const doneCount = todos.filter(t => t.done).length;
   const btnHtml = c => `
@@ -1098,6 +1105,7 @@ function renderRules() {
         </div>`;
     }).join('');
   }
+  updateSubtitle();
 }
 
 window.setRuleFilter = function(id) {
