@@ -39,8 +39,8 @@
   /* ---- スワイプ用ビューポート ---- */
   .pager-viewport { overflow: hidden; width: 100%; }
   .pager {
-    display: flex; width: 200%;
-    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    display: flex; width: 200%; align-items: flex-start;
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), height 0.28s cubic-bezier(0.4,0,0.2,1);
   }
   .pager.dragging { transition: none; }
   .page { width: 50%; flex-shrink: 0; }
@@ -435,12 +435,22 @@ let currentTab = 0;
 const pager = document.getElementById('pager');
 const viewport = document.getElementById('pager-viewport');
 
+// アクティブなページの高さにpagerを合わせる（背の高い方に引きずられないように）
+function updatePagerHeight() {
+  const active = pager.children[currentTab];
+  if (active) pager.style.height = active.offsetHeight + 'px';
+}
+// 内容が変わっても自動で追従
+const pagerRO = new ResizeObserver(() => updatePagerHeight());
+[...pager.children].forEach(p => pagerRO.observe(p));
+
 window.switchTab = function(idx) {
   currentTab = idx;
   pager.style.transform = `translateX(-${idx * 50}%)`;
   document.getElementById('tab-todo').classList.toggle('active', idx === 0);
   document.getElementById('tab-rule').classList.toggle('active', idx === 1);
   updateSubtitle();
+  updatePagerHeight();
 };
 
 // スワイプ判定：横移動が縦移動より明確に大きいときだけページ送り。
