@@ -464,7 +464,7 @@ viewport.addEventListener('touchmove', (e) => {
   const dx = e.touches[0].clientX - startX;
   const dy = e.touches[0].clientY - startY;
   if (!decided) {
-    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
     // 横移動が縦の1.4倍以上で、かつ横スクロール領域発進でないときだけページ送り
     isHoriz = Math.abs(dx) > Math.abs(dy) * 1.4 && !startedInScroller;
     decided = true;
