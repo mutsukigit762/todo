@@ -125,7 +125,6 @@
   .tag.no-cat { color: #ccc; background: #f5f5f5; }
   .del-btn { border: none; background: none; cursor: pointer; color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
   .empty { text-align: center; color: #bbb; font-size: 16px; padding: 32px 0; }
-  .count { text-align: right; font-size: 12px; color: #bbb; margin-top: 12px; flex-shrink: 0; }
   .sync-status { font-size: 11px; color: #bbb; text-align: right; padding-top: 4px; min-height: 16px; }
   .cat-manage-btn { font-size: 12px; color: #aaa; background: none; border: none; cursor: pointer; padding: 8px 0 0; display: block; font-family: inherit; }
 
@@ -227,7 +226,6 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
             <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
           </div>
           <div class="todo-list" id="todo-list"></div>
-          <div class="count" id="count"></div>
         </div>
       </div>
 
@@ -847,8 +845,6 @@ function render() {
     }).join('');
   }
 
-  document.getElementById('count').textContent =
-    todos.filter(t => !t.done).length > 0 ? `残り ${todos.filter(t=>!t.done).length} / ${todos.length}` : '';
 }
 
 window.setFilter = function(id) {
