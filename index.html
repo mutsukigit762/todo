@@ -461,15 +461,17 @@ function isInScroller(target) {
   return !!(target.closest && target.closest('.filter-btns-scroll'));
 }
 
-viewport.addEventListener('touchstart', (e) => {
+document.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) return;
+  // モーダルが開いているときはページ送りしない
+  if (document.querySelector('.modal-overlay.open')) { dragging = false; return; }
   startX = e.touches[0].clientX;
   startY = e.touches[0].clientY;
   dragging = true; decided = false; isHoriz = false;
   startedInScroller = isInScroller(e.target);
 }, { passive: true });
 
-viewport.addEventListener('touchmove', (e) => {
+document.addEventListener('touchmove', (e) => {
   if (!dragging) return;
   const dx = e.touches[0].clientX - startX;
   const dy = e.touches[0].clientY - startY;
@@ -491,7 +493,7 @@ viewport.addEventListener('touchmove', (e) => {
   pager.style.transform = `translateX(${next}%)`;
 }, { passive: false });
 
-viewport.addEventListener('touchend', (e) => {
+document.addEventListener('touchend', (e) => {
   if (!dragging) return;
   dragging = false;
   if (!isHoriz) return;
