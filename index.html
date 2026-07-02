@@ -43,9 +43,9 @@
   .tabbtn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
   /* ---- スワイプ用ビューポート ---- */
-  .pager-viewport { overflow: hidden; width: 100%; flex: 1; min-height: 0; }
+  .pager-viewport { overflow: hidden; width: 100%; flex: 1; min-height: 0; display: flex; }
   .pager {
-    display: flex; width: 200%; height: 100%; align-items: stretch;
+    display: flex; width: 200%; flex-shrink: 0; align-items: stretch;
     transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
   }
   .pager.dragging { transition: none; }
@@ -100,7 +100,7 @@
     display: flex; flex-direction: column;
     flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-bottom: 8px;
+    padding-bottom: 0;
   }
   .todo-item {
     background: #fff; border-radius: 10px; padding: 12px 14px;
