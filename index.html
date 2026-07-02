@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>TODO</title>
 <link rel="apple-touch-icon" href="apple-touch-icon-todo.png">
 <style>
@@ -1146,35 +1146,5 @@ window.setRuleFilter = function(id) {
   }, { passive: false });
 });
 </script>
-
-<style id="debug-style">
-body{background:#fdd !important;}
-.wrap{background:rgba(255,165,0,0.25) !important;}
-.page-inner{background:rgba(255,255,0,0.25) !important;}
-.todo-list{background:rgba(0,80,255,0.15) !important;}
-</style>
-<script>
-(function(){
-var d=document.createElement('div');
-d.style.cssText='position:fixed;top:100px;left:8px;z-index:99999;background:#000;color:#0f0;font-size:12px;line-height:1.5;padding:8px;white-space:pre;font-family:monospace;pointer-events:none;border-radius:6px';
-document.body.appendChild(d);
-function u(){
- var l=document.getElementById('todo-list');
- if(!l){d.textContent='no list';return;}
- var r=l.getBoundingClientRect();
- var w=document.querySelector('.wrap').getBoundingClientRect();
- var vv=window.visualViewport;
- d.textContent=
-  'innerH: '+window.innerHeight+
-  '\nvvH: '+(vv?Math.round(vv.height):'-')+
-  '\nscreenH: '+screen.height+
-  '\nbody.bottom: '+Math.round(document.body.getBoundingClientRect().bottom)+
-  '\nwrap.bottom: '+Math.round(w.bottom)+
-  '\nlist.bottom: '+Math.round(r.bottom)+
-  '\nlist gap: '+Math.round(window.innerHeight-r.bottom)+
-  '\nscrollH: '+l.scrollHeight+' clientH: '+l.clientHeight;
-}
-setInterval(u,500);u();
-})();
-</script></body>
+</body>
 </html>
