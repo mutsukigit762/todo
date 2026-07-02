@@ -53,7 +53,7 @@
 
   .input-box {
     background: #fff; border-radius: 12px;
-    padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px;
+    padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 0;
     flex-shrink: 0;
   }
   .cat-select-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
@@ -75,7 +75,7 @@
     display: flex; align-items: center; justify-content: center;
   }
   .list-area { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
-  .filter-area { position: absolute; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none; }
+  .filter-area { position: absolute; top: 16px; left: 0; right: 0; z-index: 5; pointer-events: none; }
   .filter-area .filter-btn, .filter-area .cat-manage-btn, .filter-area .filter-btns-scroll { pointer-events: auto; }
   .filter-row1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
   .filter-btns-fixed { display: flex; gap: 6px; }
@@ -101,7 +101,7 @@
     display: block;
     flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-top: 78px;
+    padding-top: 94px;
     padding-bottom: 0;
   }
   .todo-item {
