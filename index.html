@@ -85,13 +85,13 @@
   }
   .filter-btns-scroll::-webkit-scrollbar { display: none; }
   .filter-row1 .cat-manage-btn {
-    padding: 5px 2px; border: 1.5px solid transparent;
-    background: transparent; color: #aaa; font-size: 12px;
+    padding: 5px 8px; border: 1.5px solid transparent;
+    background: #f5f3ef; border-radius: 20px; color: #aaa; font-size: 12px;
     display: inline-block;
   }
   .filter-btn {
     padding: 5px 12px; border-radius: 20px; border: 1.5px solid #ddd;
-    background: transparent; color: #888; font-size: 12px; cursor: pointer;
+    background: #f5f3ef; color: #888; font-size: 12px; cursor: pointer;
     transition: all 0.15s; font-family: inherit; flex-shrink: 0; white-space: nowrap;
   }
   .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
@@ -101,6 +101,7 @@
     display: block;
     flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    border-radius: 12px 12px 0 0;
     padding-top: 94px;
     padding-bottom: 0;
   }
