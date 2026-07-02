@@ -27,11 +27,11 @@
     display: flex; flex-direction: column; min-height: 0;
   }
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
-  .subtitle { font-size: 13px; color: #999; margin-top: 4px; margin-bottom: 12px; min-height: 16px; flex-shrink: 0; }
+  .subtitle { font-size: 13px; color: #999; margin-top: 0; margin-bottom: 6px; min-height: 16px; flex-shrink: 0; }
 
   /* ---- タブ ---- */
   .tabbar {
-    display: flex; gap: 4px; margin-top: 4px; margin-bottom: 10px;
+    display: flex; gap: 4px; margin-top: 4px; margin-bottom: 4px;
     background: #eae8e3; border-radius: 10px; padding: 3px; flex-shrink: 0;
   }
   .tabbtn {
@@ -75,6 +75,20 @@
     display: flex; align-items: center; justify-content: center;
   }
   .list-area { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+  .list-area::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 96px;
+    z-index: 4; pointer-events: none;
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  }
+  .list-area::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 64px;
+    z-index: 4; pointer-events: none;
+    -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+  }
   .filter-area { position: absolute; top: 16px; left: 0; right: 0; z-index: 5; pointer-events: none; }
   .filter-area .filter-btn, .filter-area .cat-manage-btn, .filter-area .filter-btns-scroll { pointer-events: auto; }
   .filter-row1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
