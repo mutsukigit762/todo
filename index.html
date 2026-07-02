@@ -78,16 +78,7 @@
   .list-area::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 96px;
     z-index: 4; pointer-events: none;
-    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
-    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-  }
-  .list-area::after {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 64px;
-    z-index: 4; pointer-events: none;
-    -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+    background: linear-gradient(to bottom, #f5f3ef 0%, #f5f3ef 20%, rgba(245,243,239,0) 100%);
   }
   .filter-area { position: absolute; top: 16px; left: 0; right: 0; z-index: 5; pointer-events: none; }
   .filter-area .filter-btn, .filter-area .cat-manage-btn, .filter-area .filter-btns-scroll { pointer-events: auto; }
