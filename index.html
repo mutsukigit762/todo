@@ -74,7 +74,9 @@
     font-size: 20px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
-  .filter-area { margin-bottom: 16px; flex-shrink: 0; }
+  .list-area { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+  .filter-area { position: absolute; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none; }
+  .filter-area .filter-btn, .filter-area .cat-manage-btn, .filter-area .filter-btns-scroll { pointer-events: auto; }
   .filter-row1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
   .filter-btns-fixed { display: flex; gap: 6px; }
   .filter-btns-scroll {
@@ -99,6 +101,7 @@
     display: block;
     flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    padding-top: 78px;
     padding-bottom: 0;
   }
   .todo-item {
@@ -217,14 +220,16 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <button class="add-btn" onclick="addTodo()">+</button>
             </div>
           </div>
-          <div class="filter-area">
-            <div class="filter-row1">
-              <div class="filter-btns-fixed" id="filter-btns-fixed"></div>
-              <button class="cat-manage-btn" onclick="openCatModal()">カテゴリ一覧</button>
+          <div class="list-area">
+            <div class="filter-area">
+              <div class="filter-row1">
+                <div class="filter-btns-fixed" id="filter-btns-fixed"></div>
+                <button class="cat-manage-btn" onclick="openCatModal()">カテゴリ一覧</button>
+              </div>
+              <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
             </div>
-            <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
+            <div class="todo-list" id="todo-list"></div>
           </div>
-          <div class="todo-list" id="todo-list"></div>
         </div>
       </div>
 
@@ -242,13 +247,15 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <button class="add-btn" onclick="addRule()">+</button>
             </div>
           </div>
-          <div class="filter-area">
-            <div class="filter-row1">
-              <button class="cat-manage-btn" onclick="openRuleCatModal()">カテゴリ一覧</button>
+          <div class="list-area">
+            <div class="filter-area">
+              <div class="filter-row1">
+                <button class="cat-manage-btn" onclick="openRuleCatModal()">カテゴリ一覧</button>
+              </div>
+              <div class="filter-btns-scroll" id="rule-filter-btns-scroll"></div>
             </div>
-            <div class="filter-btns-scroll" id="rule-filter-btns-scroll"></div>
+            <div class="todo-list" id="rule-list"></div>
           </div>
-          <div class="todo-list" id="rule-list"></div>
         </div>
       </div>
 
