@@ -105,18 +105,25 @@
   .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
   .filter-btn.done-btn { border-color: #bbb; color: #bbb; }
   .filter-btn.done-btn.active { border-color: #888; background: #888; color: #fff; }
-  /* 常時表示の自前スクロールバー */
+  /* 常時表示・ドラッグ可能な自前スクロールバー */
   .scroll-ind {
-    position: absolute; top: 94px; bottom: 4px; right: 1px; width: 4px;
-    z-index: 6; pointer-events: none; opacity: 0;
+    position: absolute; top: 94px; bottom: 4px; right: 0; width: 14px;
+    z-index: 7; pointer-events: none; opacity: 0;
     transition: opacity 0.3s;
   }
   .scroll-ind.visible { opacity: 1; }
-  .scroll-ind::after {
-    content: ''; position: absolute; left: 0; width: 100%;
+  .scroll-thumb {
+    position: absolute; right: 1px; width: 4px;
     top: var(--thumb-top, 0px); height: var(--thumb-h, 40px);
     background: rgba(0,0,0,0.22); border-radius: 3px;
+    pointer-events: auto; touch-action: none; cursor: grab;
+    transition: width 0.12s, background 0.12s;
   }
+  /* 指で掴みやすいよう当たり判定を広げる（見た目は変えない） */
+  .scroll-thumb::before {
+    content: ''; position: absolute; top: -8px; bottom: -8px; left: -14px; right: -6px;
+  }
+  .scroll-thumb.dragging { width: 7px; background: rgba(0,0,0,0.5); cursor: grabbing; }
   .todo-list {
     display: block;
     flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -252,7 +259,7 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
             </div>
             <div class="todo-list" id="todo-list"></div>
-            <div class="scroll-ind" id="todo-scroll-ind"></div>
+            <div class="scroll-ind" id="todo-scroll-ind"><div class="scroll-thumb"></div></div>
           </div>
         </div>
       </div>
@@ -279,7 +286,7 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <div class="filter-btns-scroll" id="rule-filter-btns-scroll"></div>
             </div>
             <div class="todo-list" id="rule-list"></div>
-            <div class="scroll-ind" id="rule-scroll-ind"></div>
+            <div class="scroll-ind" id="rule-scroll-ind"><div class="scroll-thumb"></div></div>
           </div>
         </div>
       </div>
@@ -1198,6 +1205,31 @@ window.setRuleFilter = function(id) {
   window.addEventListener('resize', update);
   new MutationObserver(update).observe(list, { childList: true });
   update();
+
+  // つまみを掴んでドラッグでスクロール
+  const thumb = ind.querySelector('.scroll-thumb');
+  let dragging = false, startY = 0, startTop = 0;
+  thumb.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    startY = e.clientY;
+    startTop = parseFloat(ind.style.getPropertyValue('--thumb-top')) || 0;
+    thumb.setPointerCapture(e.pointerId);
+    thumb.classList.add('dragging');
+    e.preventDefault(); e.stopPropagation();
+  });
+  thumb.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const track = ind.getBoundingClientRect().height;
+    const thumbH = thumb.getBoundingClientRect().height;
+    const range = track - thumbH;
+    let newTop = Math.max(0, Math.min(range, startTop + (e.clientY - startY)));
+    const maxScroll = list.scrollHeight - list.clientHeight;
+    list.scrollTop = range > 0 ? (newTop / range) * maxScroll : 0;
+    e.preventDefault();
+  });
+  const endDrag = () => { dragging = false; thumb.classList.remove('dragging'); };
+  thumb.addEventListener('pointerup', endDrag);
+  thumb.addEventListener('pointercancel', endDrag);
 });
 </script>
 </body>
