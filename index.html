@@ -105,6 +105,18 @@
   .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
   .filter-btn.done-btn { border-color: #bbb; color: #bbb; }
   .filter-btn.done-btn.active { border-color: #888; background: #888; color: #fff; }
+  /* 常時表示の自前スクロールバー */
+  .scroll-ind {
+    position: absolute; top: 94px; bottom: 4px; right: 1px; width: 4px;
+    z-index: 6; pointer-events: none; opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .scroll-ind.visible { opacity: 1; }
+  .scroll-ind::after {
+    content: ''; position: absolute; left: 0; width: 100%;
+    top: var(--thumb-top, 0px); height: var(--thumb-h, 40px);
+    background: rgba(0,0,0,0.22); border-radius: 3px;
+  }
   .todo-list {
     display: block;
     flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -112,7 +124,9 @@
     border-radius: 12px 12px 0 0;
     padding-top: 94px;
     padding-bottom: 0;
+    scrollbar-width: none;
   }
+  .todo-list::-webkit-scrollbar { display: none; }
   .todo-item {
     background: #fff; border-radius: 10px; padding: 12px 14px;
     display: flex; align-items: flex-start; gap: 12px;
@@ -238,6 +252,7 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
             </div>
             <div class="todo-list" id="todo-list"></div>
+            <div class="scroll-ind" id="todo-scroll-ind"></div>
           </div>
         </div>
       </div>
@@ -264,6 +279,7 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <div class="filter-btns-scroll" id="rule-filter-btns-scroll"></div>
             </div>
             <div class="todo-list" id="rule-list"></div>
+            <div class="scroll-ind" id="rule-scroll-ind"></div>
           </div>
         </div>
       </div>
@@ -1160,6 +1176,28 @@ window.setRuleFilter = function(id) {
     e.preventDefault();
     scrollRow.scrollLeft += e.deltaX - e.deltaY;
   }, { passive: false });
+});
+
+/* 常時表示の自前スクロールバー：中身の量に応じてつまみを動かす */
+[['todo-list', 'todo-scroll-ind'], ['rule-list', 'rule-scroll-ind']].forEach(([listId, indId]) => {
+  const list = document.getElementById(listId);
+  const ind = document.getElementById(indId);
+  if (!list || !ind) return;
+  const update = () => {
+    const sh = list.scrollHeight, ch = list.clientHeight;
+    const track = ind.getBoundingClientRect().height;
+    if (sh <= ch + 1 || track <= 0) { ind.classList.remove('visible'); return; }
+    const thumbH = Math.max(32, track * ch / sh);
+    const maxScroll = sh - ch;
+    const thumbTop = maxScroll > 0 ? (list.scrollTop / maxScroll) * (track - thumbH) : 0;
+    ind.style.setProperty('--thumb-h', thumbH + 'px');
+    ind.style.setProperty('--thumb-top', thumbTop + 'px');
+    ind.classList.add('visible');
+  };
+  list.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  new MutationObserver(update).observe(list, { childList: true });
+  update();
 });
 </script>
 </body>
