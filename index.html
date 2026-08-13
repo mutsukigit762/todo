@@ -361,7 +361,7 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -381,6 +381,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 if (!document.body) await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
 await new Promise((resolve) => {
+  getRedirectResult(auth).catch(() => {});
   const gate = document.createElement('div');
   gate.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#111;color:#eee;font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:24px';
   gate.innerHTML = '<div style="font-size:15px;opacity:.75;line-height:1.7">このアプリはムツキ専用だよ<br>Googleでログインしてね</div>'
@@ -390,8 +391,18 @@ await new Promise((resolve) => {
   const err = gate.querySelector('div:last-child');
   btn.addEventListener('click', async () => {
     btn.disabled = true; err.textContent = '';
-    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-    catch (e) { err.textContent = 'ログインできなかった：' + (e && e.code ? e.code : e); btn.disabled = false; }
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (e) {
+      // Safari はポップアップを塞ぐことがある。その時は画面ごと切り替える方式に回す。
+      try {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
+      } catch (e2) {
+        err.textContent = 'ログインできなかった：' + (e2 && e2.code ? e2.code : e2);
+        btn.disabled = false;
+      }
+    }
   });
   document.body.appendChild(gate);
   onAuthStateChanged(auth, (user) => {
