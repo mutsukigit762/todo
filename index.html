@@ -851,7 +851,6 @@ function render() {
     <button class="filter-btn${filterCat === c.id ? ' active' : ''}${c.cls}"
       onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>`;
   document.getElementById('filter-btns-fixed').innerHTML = [
-    {id: '__none__', name: 'カテゴリなし', cls: ''},
     {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'},
     {id: '__deleted__', name: `削除済み${deletedCount > 0 ? ' ' + deletedCount : ''}`, cls: ' done-btn'}
   ].map(btnHtml).join('');
