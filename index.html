@@ -658,6 +658,17 @@ window.toggleTodo = function(id) {
 };
 
 window.deleteTodo = function(id) {
+  todos = todos.map(t => t.id === id ? {...t, deleted: true, deletedAt: Date.now()} : t);
+  scheduleSave(); render();
+};
+
+window.restoreTodo = function(id) {
+  todos = todos.map(t => t.id === id ? {...t, deleted: false, deletedAt: null} : t);
+  scheduleSave(); render();
+};
+
+window.permanentlyDeleteTodo = function(id) {
+  if (!confirm('完全に削除しますか？元に戻せません。')) return;
   todos = todos.filter(t => t.id !== id);
   scheduleSave(); render();
 };
@@ -824,7 +835,7 @@ function renderCatModal() {
 function updateSubtitle() {
   const el = document.getElementById('subtitle');
   if (currentTab === 0) {
-    const remaining = todos.filter(t => !t.done).length;
+    const remaining = todos.filter(t => !t.done && !t.deleted).length;
     el.textContent = todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
   } else {
     el.textContent = rules.length === 0 ? '' : `${rules.length} 件`;
@@ -834,13 +845,15 @@ function updateSubtitle() {
 function render() {
   updateSubtitle();
 
-  const doneCount = todos.filter(t => t.done).length;
+  const doneCount = todos.filter(t => t.done && !t.deleted).length;
+  const deletedCount = todos.filter(t => t.deleted).length;
   const btnHtml = c => `
     <button class="filter-btn${filterCat === c.id ? ' active' : ''}${c.cls}"
       onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>`;
   document.getElementById('filter-btns-fixed').innerHTML = [
     {id: '__none__', name: 'カテゴリなし', cls: ''},
-    {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'}
+    {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'},
+    {id: '__deleted__', name: `削除済み${deletedCount > 0 ? ' ' + deletedCount : ''}`, cls: ' done-btn'}
   ].map(btnHtml).join('');
   document.getElementById('filter-btns-scroll').innerHTML =
     [...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0))
@@ -849,13 +862,16 @@ function render() {
   renderCatModal();
 
   const filtered = todos.filter(t => {
-    if (filterCat === '__done__') return t.done;
-    if (filterCat === '__none__') return !t.catId && !t.done;
-    if (filterCat === '__all__') return !t.done;
-    return t.catId === filterCat && !t.done;
+    if (filterCat === '__deleted__') return t.deleted;
+    if (filterCat === '__done__') return t.done && !t.deleted;
+    if (filterCat === '__none__') return !t.catId && !t.done && !t.deleted;
+    if (filterCat === '__all__') return !t.done && !t.deleted;
+    return t.catId === filterCat && !t.done && !t.deleted;
   });
 
-  if (filterCat === '__done__') {
+  if (filterCat === '__deleted__') {
+    filtered.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
+  } else if (filterCat === '__done__') {
     filtered.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
   } else {
     filtered.reverse();
@@ -863,25 +879,29 @@ function render() {
 
   const list = document.getElementById('todo-list');
   if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty">${filterCat === '__done__' ? '完了したタスクはありません' : 'タスクがありません'}</div>`;
+    list.innerHTML = `<div class="empty">${filterCat === '__done__' ? '完了したタスクはありません' : filterCat === '__deleted__' ? '削除したタスクはありません' : 'タスクがありません'}</div>`;
   } else {
     list.innerHTML = filtered.map(todo => {
       const color = todo.catId ? catColor(todo.catId) : null;
       const name = todo.catId ? catName(todo.catId) : null;
+      const isDeleted = !!todo.deleted;
       return `
         <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
           <div class="check-box"
-            style="border-color:${todo.done?(color||'#aaa'):'#ccc'};background:${todo.done?(color||'#aaa'):'transparent'}"
-            onclick="toggleTodo(${todo.id})">
-            ${todo.done?`<svg width="11" height="8" viewBox="0 0 11 8" fill="none"><path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+            style="${isDeleted ? 'visibility:hidden' : `border-color:${todo.done?(color||'#aaa'):'#ccc'};background:${todo.done?(color||'#aaa'):'transparent'}`}"
+            ${isDeleted ? '' : `onclick="toggleTodo(${todo.id})"`}>
+            ${!isDeleted && todo.done?`<svg width="11" height="8" viewBox="0 0 11 8" fill="none"><path d="M1 4L4 7L10 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
           </div>
-          <div class="todo-text" contenteditable="true"
-            onblur="editTodoText(${todo.id}, this.innerText)"
+          <div class="todo-text"${isDeleted ? '' : ' contenteditable="true"'}
+            ${isDeleted ? '' : `onblur="editTodoText(${todo.id}, this.innerText)"`}
             >${escapeHtml(todo.text)}</div>
           <span class="tag${name?'':' no-cat'}"
             style="${name?`background:${color}22;color:${color}`:''}"
-            onclick="openChangeCatModal(${todo.id})">${name?escapeHtml(name):'未分類'}</span>
-          <button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>
+            ${isDeleted ? '' : `onclick="openChangeCatModal(${todo.id})"`}>${name?escapeHtml(name):'未分類'}</span>
+          ${isDeleted
+            ? `<button class="del-btn" onclick="restoreTodo(${todo.id})" title="元に戻す">↺</button>
+               <button class="del-btn" onclick="permanentlyDeleteTodo(${todo.id})" title="完全に削除">×</button>`
+            : `<button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>`}
         </div>`;
     }).join('');
   }
@@ -895,7 +915,7 @@ window.setFilter = function(id) {
     filterCat = filterCat === id ? '__all__' : id;
   }
   const sel = document.getElementById('cat-select');
-  if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__') {
+  if (filterCat !== '__all__' && filterCat !== '__none__' && filterCat !== '__done__' && filterCat !== '__deleted__') {
     sel.value = filterCat;
     catLastUsed[filterCat] = Date.now();
     scheduleSave();
