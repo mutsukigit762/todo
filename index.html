@@ -1144,10 +1144,9 @@ function renderRules() {
   const btnHtml = c => `
     <button class="filter-btn${ruleFilterCat === c.id ? ' active' : ''}"
       onclick="setRuleFilter('${c.id}')">${escapeHtml(c.name)}</button>`;
-  const noneBtn = btnHtml({id: '__none__', name: 'カテゴリなし'});
   const catBtns = [...ruleCategories].sort((a, b) => (ruleCatLastUsed[b.id] || 0) - (ruleCatLastUsed[a.id] || 0))
     .map(c => btnHtml({id: c.id, name: c.name})).join('');
-  document.getElementById('rule-filter-btns-scroll').innerHTML = noneBtn + catBtns;
+  document.getElementById('rule-filter-btns-scroll').innerHTML = catBtns;
 
   renderRuleCatModal();
 
