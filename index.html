@@ -114,18 +114,29 @@
     position: relative; overflow: hidden; border-radius: 10px;
     margin-bottom: 6px; flex-shrink: 0; touch-action: pan-y;
   }
-  .todo-item-wrap .todo-item { margin-bottom: 0; }
+  .todo-item-wrap .todo-item {
+    margin-bottom: 0; position: relative; z-index: 1;
+    will-change: transform;
+  }
   .swipe-actions {
-    position: absolute; top: 0; right: 0; height: 100%;
-    display: flex; z-index: 0;
+    position: absolute; inset: 0 0 0 auto; height: 100%;
+    display: flex; z-index: 0; border-radius: 10px; overflow: hidden;
   }
   .swipe-action {
     border: none; color: #fff; font-family: inherit; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    padding: 0 14px; white-space: nowrap;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 0; white-space: nowrap; width: 68px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
   }
-  .swipe-action.move { background: #4a90a4; font-size: 12px; font-weight: 600; width: 104px; }
-  .swipe-action.trash { background: #e05a5a; font-size: 18px; width: 56px; }
+  .swipe-action svg { display: block; }
+  .swipe-action.move { background: #7a8fa6; }
+  .swipe-action.trash { background: #c2705f; }
+  /* 大きく引っ張ったとき：全面が削除色になって「離せば消える」と分かるようにする */
+  .todo-item-wrap.will-delete .swipe-actions {
+    left: 0; background: #c2705f; justify-content: flex-end;
+  }
+  .todo-item-wrap.will-delete .swipe-action.move { opacity: 0; }
+  .swipe-action.move { transition: opacity 0.15s; }
   .check-box {
     width: 20px; height: 20px; border-radius: 5px; border: 2px solid #ccc;
     cursor: pointer; flex-shrink: 0; margin-top: 2px;
@@ -705,12 +716,14 @@ window.moveTodoToRule = function(id) {
 };
 
 /* ---- タスク行のスワイプでゴミ箱/RULES移動ボタンを出す ---- */
-const SWIPE_ACTIONS_WIDTH = 160;
+const SWIPE_ACTIONS_WIDTH = 136;
+// これ以上引っ張って離したら、カードが左に抜けてそのまま削除される
+const FULL_SWIPE_RATIO = 0.55;
 let swipeState = null;
 
 function closeAllSwipes() {
   document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
-    w.classList.remove('swiped');
+    w.classList.remove('swiped', 'will-delete');
     const item = w.querySelector('.todo-item');
     if (item) { item.style.transition = 'transform 0.2s ease'; item.style.transform = ''; }
   });
@@ -727,7 +740,7 @@ todoListEl.addEventListener('touchstart', (e) => {
   const wasOpen = wrap.classList.contains('swiped');
   document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
     if (w !== wrap) {
-      w.classList.remove('swiped');
+      w.classList.remove('swiped', 'will-delete');
       const it = w.querySelector('.todo-item');
       if (it) { it.style.transition = 'transform 0.2s ease'; it.style.transform = ''; }
     }
@@ -753,9 +766,11 @@ todoListEl.addEventListener('touchmove', (e) => {
   e.preventDefault();
   let next = swipeState.startTransform + dx;
   if (next > 0) next = next * 0.3;
-  if (next < -SWIPE_ACTIONS_WIDTH) next = -SWIPE_ACTIONS_WIDTH + (next + SWIPE_ACTIONS_WIDTH) * 0.3;
   swipeState.item.style.transition = 'none';
   swipeState.item.style.transform = `translateX(${next}px)`;
+  // 大きく引っ張ったら「離せば削除」の見た目に切り替える
+  const full = swipeState.wrap.offsetWidth * FULL_SWIPE_RATIO;
+  swipeState.wrap.classList.toggle('will-delete', next < -full);
 }, { passive: false });
 
 todoListEl.addEventListener('touchend', (e) => {
@@ -764,16 +779,34 @@ todoListEl.addEventListener('touchend', (e) => {
   if (!horiz) {
     if (wasOpen) {
       e.preventDefault();
-      wrap.classList.remove('swiped');
+      wrap.classList.remove('swiped', 'will-delete');
       item.style.transition = 'transform 0.2s ease';
       item.style.transform = '';
     }
     swipeState = null;
     return;
   }
-  item.style.transition = 'transform 0.2s ease';
   const dx = e.changedTouches[0].clientX - swipeState.startX;
   const finalPos = swipeState.startTransform + dx;
+  const todoId = Number(item.dataset.todoId);
+  swipeState = null;
+
+  // 一気に引っ張りきった：カードを左に抜けさせて、そのまま削除
+  if (finalPos < -wrap.offsetWidth * FULL_SWIPE_RATIO) {
+    item.style.transition = 'transform 0.22s cubic-bezier(0.4,0,1,1)';
+    item.style.transform = `translateX(-${wrap.offsetWidth}px)`;
+    wrap.style.transition = 'height 0.2s ease 0.16s, margin 0.2s ease 0.16s, opacity 0.2s ease 0.16s';
+    wrap.style.height = wrap.offsetHeight + 'px';
+    requestAnimationFrame(() => {
+      wrap.style.height = '0';
+      wrap.style.marginBottom = '0';
+      wrap.style.opacity = '0';
+    });
+    setTimeout(() => deleteTodo(todoId), 380);
+    return;
+  }
+
+  item.style.transition = 'transform 0.2s ease';
   if (finalPos < -SWIPE_ACTIONS_WIDTH * 0.4) {
     item.style.transform = `translateX(-${SWIPE_ACTIONS_WIDTH}px)`;
     wrap.classList.add('swiped');
@@ -781,7 +814,6 @@ todoListEl.addEventListener('touchend', (e) => {
     item.style.transform = '';
     wrap.classList.remove('swiped');
   }
-  swipeState = null;
 }, { passive: false });
 
 document.addEventListener('touchstart', (e) => {
@@ -1016,8 +1048,14 @@ function render() {
       return `
         <div class="todo-item-wrap">
           <div class="swipe-actions">
-            <button class="swipe-action move" onclick="moveTodoToRule(${todo.id})">RULESへ移動</button>
-            <button class="swipe-action trash" onclick="deleteTodo(${todo.id})" aria-label="削除">🗑</button>
+            <button class="swipe-action move" onclick="moveTodoToRule(${todo.id})" aria-label="RULESへ移動">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="M13 6l6 6-6 6"/></svg>
+              RULES
+            </button>
+            <button class="swipe-action trash" onclick="deleteTodo(${todo.id})" aria-label="削除">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              削除
+            </button>
           </div>
           <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
             ${itemInner}
