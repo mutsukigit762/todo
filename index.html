@@ -165,7 +165,15 @@
   .swipe-circle {
     width: 46px; height: 46px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; transition: transform 0.15s;
+    color: #fff; transition: transform 0.15s; position: relative;
+  }
+  /* 丸の後ろにも同じ板を敷いて、外へ向かってぼやけて消えるようにする */
+  .swipe-circle::before {
+    content: ''; position: absolute; inset: -11px; z-index: -1;
+    background: rgba(245,243,239,0.82);
+    -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+    -webkit-mask-image: radial-gradient(circle closest-side, #000 52%, transparent 100%);
+    mask-image: radial-gradient(circle closest-side, #000 52%, transparent 100%);
   }
   .swipe-action svg { display: block; }
   .swipe-action.archive .swipe-circle,
