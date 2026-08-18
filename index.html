@@ -12,6 +12,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, textarea { -webkit-user-select: text; user-select: text; }
   html, body { height: auto; }
+  html { overflow-x: hidden; }
   body {
     min-height: 100dvh;
     background: #f5f3ef;
@@ -41,14 +42,16 @@
   .tabbtn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
   /* ---- スワイプ用ビューポート ---- */
-  .pager-viewport { overflow: hidden; width: 100%; display: flex; }
+  /* 行を画面端まで滑らせたいので、ここだけ .wrap の左右余白の外に広げる。
+     余白ぶんは .page-inner 側で付け直すので、見た目の位置は変わらない。 */
+  .pager-viewport { overflow: hidden; width: auto; margin: 0 -16px; display: flex; }
   .pager {
     display: flex; width: 200%; flex-shrink: 0; align-items: flex-start;
     transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
   }
   .pager.dragging { transition: none; }
   .page { width: 50%; flex-shrink: 0; display: flex; flex-direction: column; }
-  .page-inner { padding: 0 2px; display: flex; flex-direction: column; }
+  .page-inner { padding: 0 18px; display: flex; flex-direction: column; }
 
   .input-box {
     background: #fff; border-radius: 12px;
@@ -110,16 +113,19 @@
     flex-shrink: 0; position: relative;
   }
   .todo-item.done { opacity: 0.5; }
+  /* 行だけ左右の余白の外まで広げる。マイナスの margin で外に出して、
+     同じぶんの padding で中身の位置は元のまま。カードが画面端まで走れる。
+     ここに overflow:hidden は付けない（切り取り線が行の下に残るため）。 */
   .todo-item-wrap {
-    position: relative; overflow: hidden; border-radius: 10px;
-    margin-bottom: 6px; flex-shrink: 0; touch-action: pan-y;
+    position: relative; margin: 0 -18px 6px; padding: 0 18px;
+    flex-shrink: 0; touch-action: pan-y;
   }
   .todo-item-wrap .todo-item {
     margin-bottom: 0; position: relative; z-index: 1;
     will-change: transform;
   }
   .swipe-actions {
-    position: absolute; inset: 0 0 0 auto; height: 100%;
+    position: absolute; top: 0; bottom: 0; right: 18px; left: auto;
     display: flex; z-index: 0; border-radius: 10px; overflow: hidden;
   }
   .swipe-action {
@@ -133,7 +139,7 @@
   .swipe-action.trash { background: #c2705f; }
   /* 大きく引っ張ったとき：全面が削除色になって「離せば消える」と分かるようにする */
   .todo-item-wrap.will-delete .swipe-actions {
-    left: 0; background: #c2705f; justify-content: flex-end;
+    left: 18px; background: #c2705f; justify-content: flex-end;
   }
   .todo-item-wrap.will-delete .swipe-action.move { opacity: 0; }
   .swipe-action.move { transition: opacity 0.15s; }
@@ -795,6 +801,8 @@ todoListEl.addEventListener('touchend', (e) => {
   if (finalPos < -wrap.offsetWidth * FULL_SWIPE_RATIO) {
     item.style.transition = 'transform 0.22s cubic-bezier(0.4,0,1,1)';
     item.style.transform = `translateX(-${wrap.offsetWidth}px)`;
+    // 畳むあいだだけ縦のはみ出しを抑える（普段は付けない）
+    wrap.style.overflow = 'hidden';
     wrap.style.transition = 'height 0.2s ease 0.16s, margin 0.2s ease 0.16s, opacity 0.2s ease 0.16s';
     wrap.style.height = wrap.offsetHeight + 'px';
     requestAnimationFrame(() => {
