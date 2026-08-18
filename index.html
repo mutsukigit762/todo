@@ -19,34 +19,36 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 0 0 calc(24px + env(safe-area-inset-bottom));
+    padding: calc(8px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom));
   }
   .wrap {
     width: 100%; max-width: 480px; padding: 0 16px;
     display: flex; flex-direction: column;
   }
   h1 { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
-  .subtitle { font-size: 13px; color: #999; margin-top: 0; margin-bottom: 6px; min-height: 16px; flex-shrink: 0; }
+  .subtitle { font-size: 13px; color: #999; margin-top: 10px; margin-bottom: 6px; min-height: 16px; flex-shrink: 0; }
 
   /* ---- タブ ---- */
-  /* スクロールしても上に貼り付いたまま。ページ全体のスクロールはそのままなので、
-     OS標準の慣性や上端バーの挙動は変わらない。 */
+  /* カプセルが浮いたまま上端に留まり、下をカードが透けて通り抜ける。
+     ページ全体のスクロールはそのままなので、慣性やOS標準の挙動は変わらない。 */
   .topbar {
-    position: sticky; top: 0; z-index: 60;
-    background: #f5f3ef;
-    margin: 0 -16px;
-    padding: calc(16px + env(safe-area-inset-top)) 16px 0;
+    position: sticky; top: calc(8px + env(safe-area-inset-top)); z-index: 60;
+    pointer-events: none; /* カプセルの外はカード側を触れるように */
   }
   .tabbar {
-    display: flex; gap: 4px; margin-top: 4px; margin-bottom: 4px;
-    background: #eae8e3; border-radius: 10px; padding: 3px; flex-shrink: 0;
+    display: flex; gap: 4px; pointer-events: auto;
+    background: rgba(236,233,227,0.62);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(18px) saturate(1.5);
+    border-radius: 999px; padding: 4px; flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.04);
   }
   .tabbtn {
     flex: 1; border: none; background: transparent; cursor: pointer;
-    font-family: inherit; font-size: 14px; font-weight: 600; color: #999;
-    padding: 8px 0; border-radius: 8px; transition: all 0.2s;
+    font-family: inherit; font-size: 14px; font-weight: 600; color: #8f8a83;
+    padding: 8px 0; border-radius: 999px; transition: all 0.2s;
   }
-  .tabbtn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .tabbtn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.10); }
 
   /* ---- スワイプ用ビューポート ---- */
   /* 行を画面端まで滑らせたいので、ここだけ .wrap の左右余白の外に広げる。
@@ -270,6 +272,8 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
 </style>
 </head>
 <body>
+<!-- 上端（時計やノッチのある帯）にカードが入り込まないよう蓋をする -->
+<div style="position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#f5f3ef;z-index:70;"></div>
 <div class="wrap">
   <div class="topbar">
     <div class="tabbar">
@@ -277,8 +281,8 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
       <button class="tabbtn" id="tab-archive" onclick="switchTab(1)">アーカイブ</button>
       <button class="tabbtn" id="tab-rule" onclick="switchTab(2)">RULES</button>
     </div>
-    <div class="subtitle" id="subtitle"></div>
   </div>
+  <div class="subtitle" id="subtitle"></div>
 
   <div class="pager-viewport" id="pager-viewport">
     <div class="pager" id="pager">
