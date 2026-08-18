@@ -152,11 +152,15 @@
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     width: 56px; transition: opacity 0.15s, transform 0.15s;
   }
-  /* パネルを敷かないぶん、文字の下だけぼかして読めるようにする */
-  .swipe-label {
-    padding: 2px 5px; border-radius: 6px;
-    background: rgba(245,243,239,0.7);
-    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  /* パネルを敷かないぶん、文字の下だけぼかして読めるようにする。
+     板は文字の後ろに別で敷き、ふちを外へ向かってだんだん消す。 */
+  .swipe-label { position: relative; padding: 2px 4px; }
+  .swipe-label::before {
+    content: ''; position: absolute; inset: -7px -12px; z-index: -1;
+    background: rgba(245,243,239,0.82);
+    -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 72%);
   }
   .swipe-circle {
     width: 46px; height: 46px; border-radius: 50%;
