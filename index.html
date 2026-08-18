@@ -599,10 +599,9 @@ function expandAllPages() {
   pages.forEach(p => { p.style.height = ''; p.style.overflow = ''; });
 }
 
-// スクロール位置はページ3枚で共有なので、そのままだと移動中は
-// 今いるページの位置で隣が表示され、着地した瞬間にガクッと飛ぶ。
-// 隣を縦にずらして最初から行き先の位置で見せておき、着地と同時に
-// ずらしを外して本物のスクロールを移す（見た目は変わらない）。
+// スクロール位置はページ3枚で共有なので、そのままだと指でめくっている最中に
+// 隣が「今いるページの位置」で見えてしまう。隣を縦にずらして、最初から
+// 行き先の位置で覗くようにする。
 function offsetNeighbourPages() {
   const from = window.scrollY;
   scrollByTab[currentTab] = from;
@@ -643,21 +642,33 @@ function centerPager(instant) {
 function goToTab(idx, dir) {
   if (animating || idx === currentTab) { centerPager(false); return; }
   animating = true;
-  expandAllPages();
-  offsetNeighbourPages();
+  const prev = currentTab;
+  const from = window.scrollY;
+  scrollByTab[prev] = from;
   const to = scrollByTab[idx];
+  const outgoing = pages[prev];
+
+  // スクロールと高さの変更が同じ瞬間に重なると、iPhoneでは一度で描き切れず
+  // 途中の絵が挟まる。なので移動の「始め」にスクロールを行き先へ移してしまい、
+  // 出ていくページだけ同じ分ずらして見た目を据え置く。
+  // 着地の側ではスクロールを一切触らないので、絵が飛ばない。
+  expandAllPages();
+  clearPageOffsets();
+  void document.body.offsetHeight; // 高さを確定させてから動かす（切り詰められないように）
+  window.scrollTo(0, to);
+  outgoing.style.transform = `translateY(${to - from}px)`;
+
+  currentTab = idx;
   setActiveTabButton(idx);
+  updateSubtitle();
+  // ページの並び順はまだ組み替えていないので、行き先は元の並びで数える
   pager.style.transform = `translateX(-${dir > 0 ? PAGE_STEP * 2 : 0}%)`;
   setTimeout(() => {
-    currentTab = idx;
     applyPageOrder();
     centerPager(true);
     collapseInactivePages();
-    // ずらしの解除とスクロールの移動は同じ瞬間に行う。片方だけだと画面が飛ぶ。
     clearPageOffsets();
-    window.scrollTo(0, to);
     animating = false;
-    updateSubtitle();
   }, 290);
 }
 
