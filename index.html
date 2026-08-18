@@ -145,9 +145,6 @@
   .swipe-action svg { display: block; }
   .swipe-action.move .swipe-circle { background: #7a8fa6; }
   .swipe-action.trash .swipe-circle { background: #d9584c; }
-  /* 大きく引っ張ったとき：削除ボタンだけを残して「離せば消える」と分かるようにする */
-  .todo-item-wrap.will-delete .swipe-action.move { opacity: 0; transform: scale(0.8); }
-  .todo-item-wrap.will-delete .swipe-action.trash .swipe-circle { transform: scale(1.18); }
   .check-box {
     width: 20px; height: 20px; border-radius: 5px; border: 2px solid #ccc;
     cursor: pointer; flex-shrink: 0; margin-top: 2px;
@@ -728,13 +725,11 @@ window.moveTodoToRule = function(id) {
 
 /* ---- タスク行のスワイプでゴミ箱/RULES移動ボタンを出す ---- */
 const SWIPE_ACTIONS_WIDTH = 104;
-// これ以上引っ張って離したら、カードが左に抜けてそのまま削除される
-const FULL_SWIPE_RATIO = 0.55;
 let swipeState = null;
 
 function closeAllSwipes() {
   document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
-    w.classList.remove('swiped', 'will-delete');
+    w.classList.remove('swiped');
     const item = w.querySelector('.todo-item');
     if (item) { item.style.transition = 'transform 0.2s ease'; item.style.transform = ''; }
   });
@@ -751,7 +746,7 @@ todoListEl.addEventListener('touchstart', (e) => {
   const wasOpen = wrap.classList.contains('swiped');
   document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
     if (w !== wrap) {
-      w.classList.remove('swiped', 'will-delete');
+      w.classList.remove('swiped');
       const it = w.querySelector('.todo-item');
       if (it) { it.style.transition = 'transform 0.2s ease'; it.style.transform = ''; }
     }
@@ -776,12 +771,11 @@ todoListEl.addEventListener('touchmove', (e) => {
   if (!swipeState.horiz) return;
   e.preventDefault();
   let next = swipeState.startTransform + dx;
+  // 両端では引っ張りに抵抗をかけて、行き過ぎないようにする
   if (next > 0) next = next * 0.3;
+  if (next < -SWIPE_ACTIONS_WIDTH) next = -SWIPE_ACTIONS_WIDTH + (next + SWIPE_ACTIONS_WIDTH) * 0.25;
   swipeState.item.style.transition = 'none';
   swipeState.item.style.transform = `translateX(${next}px)`;
-  // 大きく引っ張ったら「離せば削除」の見た目に切り替える
-  const full = swipeState.wrap.offsetWidth * FULL_SWIPE_RATIO;
-  swipeState.wrap.classList.toggle('will-delete', next < -full);
 }, { passive: false });
 
 todoListEl.addEventListener('touchend', (e) => {
@@ -790,7 +784,7 @@ todoListEl.addEventListener('touchend', (e) => {
   if (!horiz) {
     if (wasOpen) {
       e.preventDefault();
-      wrap.classList.remove('swiped', 'will-delete');
+      wrap.classList.remove('swiped');
       item.style.transition = 'transform 0.2s ease';
       item.style.transform = '';
     }
@@ -799,25 +793,7 @@ todoListEl.addEventListener('touchend', (e) => {
   }
   const dx = e.changedTouches[0].clientX - swipeState.startX;
   const finalPos = swipeState.startTransform + dx;
-  const todoId = Number(item.dataset.todoId);
   swipeState = null;
-
-  // 一気に引っ張りきった：カードを左に抜けさせて、そのまま削除
-  if (finalPos < -wrap.offsetWidth * FULL_SWIPE_RATIO) {
-    item.style.transition = 'transform 0.22s cubic-bezier(0.4,0,1,1)';
-    item.style.transform = `translateX(-${wrap.offsetWidth}px)`;
-    // 畳むあいだだけ縦のはみ出しを抑える（普段は付けない）
-    wrap.style.overflow = 'hidden';
-    wrap.style.transition = 'height 0.2s ease 0.16s, margin 0.2s ease 0.16s, opacity 0.2s ease 0.16s';
-    wrap.style.height = wrap.offsetHeight + 'px';
-    requestAnimationFrame(() => {
-      wrap.style.height = '0';
-      wrap.style.marginBottom = '0';
-      wrap.style.opacity = '0';
-    });
-    setTimeout(() => deleteTodo(todoId), 380);
-    return;
-  }
 
   item.style.transition = 'transform 0.2s ease';
   if (finalPos < -SWIPE_ACTIONS_WIDTH * 0.4) {
