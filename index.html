@@ -107,9 +107,25 @@
     display: flex; align-items: flex-start; gap: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     margin-bottom: 6px; overflow: hidden;
-    flex-shrink: 0;
+    flex-shrink: 0; position: relative;
   }
   .todo-item.done { opacity: 0.5; }
+  .todo-item-wrap {
+    position: relative; overflow: hidden; border-radius: 10px;
+    margin-bottom: 6px; flex-shrink: 0; touch-action: pan-y;
+  }
+  .todo-item-wrap .todo-item { margin-bottom: 0; }
+  .swipe-actions {
+    position: absolute; top: 0; right: 0; height: 100%;
+    display: flex; z-index: 0;
+  }
+  .swipe-action {
+    border: none; color: #fff; font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 14px; white-space: nowrap;
+  }
+  .swipe-action.move { background: #4a90a4; font-size: 12px; font-weight: 600; width: 104px; }
+  .swipe-action.trash { background: #e05a5a; font-size: 18px; width: 56px; }
   .check-box {
     width: 20px; height: 20px; border-radius: 5px; border: 2px solid #ccc;
     cursor: pointer; flex-shrink: 0; margin-top: 2px;
@@ -501,7 +517,7 @@ window.switchTab = function(idx) {
 let startX = 0, startY = 0, dragging = false, decided = false, isHoriz = false, startedInScroller = false;
 
 function isInScroller(target) {
-  return !!(target.closest && target.closest('.filter-btns-scroll'));
+  return !!(target.closest && (target.closest('.filter-btns-scroll') || target.closest('.todo-item-wrap')));
 }
 
 document.addEventListener('touchstart', (e) => {
@@ -679,6 +695,98 @@ window.editTodoText = function(id, text) {
   todos = todos.map(t => t.id === id ? {...t, text} : t);
   scheduleSave();
 };
+
+window.moveTodoToRule = function(id) {
+  const todo = todos.find(t => t.id === id);
+  if (!todo) return;
+  rules.push({ id: Date.now(), text: todo.text, catId: null });
+  todos = todos.filter(t => t.id !== id);
+  scheduleSave(); render(); renderRules();
+};
+
+/* ---- タスク行のスワイプでゴミ箱/RULES移動ボタンを出す ---- */
+const SWIPE_ACTIONS_WIDTH = 160;
+let swipeState = null;
+
+function closeAllSwipes() {
+  document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
+    w.classList.remove('swiped');
+    const item = w.querySelector('.todo-item');
+    if (item) { item.style.transition = 'transform 0.2s ease'; item.style.transform = ''; }
+  });
+}
+
+const todoListEl = document.getElementById('todo-list');
+
+todoListEl.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  if (e.target.closest('.swipe-actions')) { swipeState = null; return; }
+  const wrap = e.target.closest('.todo-item-wrap');
+  if (!wrap) { closeAllSwipes(); swipeState = null; return; }
+  const item = wrap.querySelector('.todo-item');
+  const wasOpen = wrap.classList.contains('swiped');
+  document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
+    if (w !== wrap) {
+      w.classList.remove('swiped');
+      const it = w.querySelector('.todo-item');
+      if (it) { it.style.transition = 'transform 0.2s ease'; it.style.transform = ''; }
+    }
+  });
+  swipeState = {
+    wrap, item,
+    startX: e.touches[0].clientX, startY: e.touches[0].clientY,
+    startTransform: wasOpen ? -SWIPE_ACTIONS_WIDTH : 0,
+    wasOpen, deciding: true, horiz: false
+  };
+}, { passive: true });
+
+todoListEl.addEventListener('touchmove', (e) => {
+  if (!swipeState) return;
+  const dx = e.touches[0].clientX - swipeState.startX;
+  const dy = e.touches[0].clientY - swipeState.startY;
+  if (swipeState.deciding) {
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+    swipeState.horiz = Math.abs(dx) > Math.abs(dy) * 1.4;
+    swipeState.deciding = false;
+  }
+  if (!swipeState.horiz) return;
+  e.preventDefault();
+  let next = swipeState.startTransform + dx;
+  if (next > 0) next = next * 0.3;
+  if (next < -SWIPE_ACTIONS_WIDTH) next = -SWIPE_ACTIONS_WIDTH + (next + SWIPE_ACTIONS_WIDTH) * 0.3;
+  swipeState.item.style.transition = 'none';
+  swipeState.item.style.transform = `translateX(${next}px)`;
+}, { passive: false });
+
+todoListEl.addEventListener('touchend', (e) => {
+  if (!swipeState) return;
+  const { wrap, item, horiz, wasOpen } = swipeState;
+  if (!horiz) {
+    if (wasOpen) {
+      e.preventDefault();
+      wrap.classList.remove('swiped');
+      item.style.transition = 'transform 0.2s ease';
+      item.style.transform = '';
+    }
+    swipeState = null;
+    return;
+  }
+  item.style.transition = 'transform 0.2s ease';
+  const dx = e.changedTouches[0].clientX - swipeState.startX;
+  const finalPos = swipeState.startTransform + dx;
+  if (finalPos < -SWIPE_ACTIONS_WIDTH * 0.4) {
+    item.style.transform = `translateX(-${SWIPE_ACTIONS_WIDTH}px)`;
+    wrap.classList.add('swiped');
+  } else {
+    item.style.transform = '';
+    wrap.classList.remove('swiped');
+  }
+  swipeState = null;
+}, { passive: false });
+
+document.addEventListener('touchstart', (e) => {
+  if (!e.target.closest('.todo-item-wrap')) closeAllSwipes();
+}, { passive: true });
 
 window.addCategory = function() {
   const input = document.getElementById('new-cat-input');
@@ -884,8 +992,7 @@ function render() {
       const color = todo.catId ? catColor(todo.catId) : null;
       const name = todo.catId ? catName(todo.catId) : null;
       const isDeleted = !!todo.deleted;
-      return `
-        <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
+      const itemInner = `
           <div class="check-box"
             style="${isDeleted ? 'visibility:hidden' : `border-color:${todo.done?(color||'#aaa'):'#ccc'};background:${todo.done?(color||'#aaa'):'transparent'}`}"
             ${isDeleted ? '' : `onclick="toggleTodo(${todo.id})"`}>
@@ -896,11 +1003,25 @@ function render() {
             >${escapeHtml(todo.text)}</div>
           <span class="tag${name?'':' no-cat'}"
             style="${name?`background:${color}22;color:${color}`:''}"
-            ${isDeleted ? '' : `onclick="openChangeCatModal(${todo.id})"`}>${name?escapeHtml(name):'未分類'}</span>
-          ${isDeleted
-            ? `<button class="del-btn" onclick="restoreTodo(${todo.id})" title="元に戻す">↺</button>
-               <button class="del-btn" onclick="permanentlyDeleteTodo(${todo.id})" title="完全に削除">×</button>`
-            : `<button class="del-btn" onclick="deleteTodo(${todo.id})">×</button>`}
+            ${isDeleted ? '' : `onclick="openChangeCatModal(${todo.id})"`}>${name?escapeHtml(name):'未分類'}</span>`;
+
+      if (isDeleted) {
+        return `
+        <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
+          ${itemInner}
+          <button class="del-btn" onclick="restoreTodo(${todo.id})" title="元に戻す">↺</button>
+          <button class="del-btn" onclick="permanentlyDeleteTodo(${todo.id})" title="完全に削除">×</button>
+        </div>`;
+      }
+      return `
+        <div class="todo-item-wrap">
+          <div class="swipe-actions">
+            <button class="swipe-action move" onclick="moveTodoToRule(${todo.id})">RULESへ移動</button>
+            <button class="swipe-action trash" onclick="deleteTodo(${todo.id})" aria-label="削除">🗑</button>
+          </div>
+          <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
+            ${itemInner}
+          </div>
         </div>`;
     }).join('');
   }
