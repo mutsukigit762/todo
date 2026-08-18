@@ -570,14 +570,57 @@ const PAGE_STEP = 100 / TAB_COUNT; // 1ページぶんの移動量（%）
 const pager = document.getElementById('pager');
 const viewport = document.getElementById('pager-viewport');
 
-window.switchTab = function(idx) {
-  currentTab = idx;
-  pager.style.transform = `translateX(-${idx * PAGE_STEP}%)`;
+// タブは輪っかにしてある。ページの並び順を毎回組み替えて、いま見ているページを
+// 常にまん中に置く。こうすると端から端へ回っても、隣へ動く見た目のままで済む。
+const pages = Array.from(document.querySelectorAll('.pager .page'));
+let animating = false;
+
+function applyPageOrder() {
+  pages.forEach((p, i) => {
+    const rel = (i - currentTab + TAB_COUNT) % TAB_COUNT; // 0=いま 1=次 2=前
+    p.style.order = rel === 0 ? 1 : rel === 1 ? 2 : 0;
+  });
+}
+
+function setActiveTabButton(idx) {
   document.getElementById('tab-todo').classList.toggle('active', idx === 0);
   document.getElementById('tab-archive').classList.toggle('active', idx === 1);
   document.getElementById('tab-rule').classList.toggle('active', idx === 2);
-  updateSubtitle();
+}
+
+function centerPager(instant) {
+  if (instant) {
+    pager.style.transition = 'none';
+    pager.style.transform = `translateX(-${PAGE_STEP}%)`;
+    void pager.offsetWidth; // いったん反映させてから元に戻す
+    pager.style.transition = '';
+  } else {
+    pager.style.transform = `translateX(-${PAGE_STEP}%)`;
+  }
+}
+
+// dir: 1 なら次のページへ（左に流れる）、-1 なら前のページへ
+function goToTab(idx, dir) {
+  if (animating || idx === currentTab) { centerPager(false); return; }
+  animating = true;
+  setActiveTabButton(idx);
+  pager.style.transform = `translateX(-${dir > 0 ? PAGE_STEP * 2 : 0}%)`;
+  setTimeout(() => {
+    currentTab = idx;
+    applyPageOrder();
+    centerPager(true);
+    animating = false;
+    updateSubtitle();
+  }, 290);
+}
+
+window.switchTab = function(idx) {
+  // タブは3つなので、どこへ移っても必ず「隣」になる
+  goToTab(idx, idx === (currentTab + 1) % TAB_COUNT ? 1 : -1);
 };
+
+applyPageOrder();
+centerPager(true);
 
 // スワイプ判定：横移動が縦移動より明確に大きいときだけページ送り。
 // カテゴリ行の横スクロール内で始まったジェスチャは無視する。
@@ -589,8 +632,8 @@ function isInScroller(target) {
 
 document.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) return;
-  // モーダルが開いているときはページ送りしない
-  if (document.querySelector('.modal-overlay.open')) { dragging = false; return; }
+  // モーダルが開いているとき・切り替えの最中はページ送りしない
+  if (animating || document.querySelector('.modal-overlay.open')) { dragging = false; return; }
   startX = e.touches[0].clientX;
   startY = e.touches[0].clientY;
   dragging = true; decided = false; isHoriz = false;
@@ -610,14 +653,9 @@ document.addEventListener('touchmove', (e) => {
   }
   if (!isHoriz) return;
   e.preventDefault();
-  let offset = -currentTab * PAGE_STEP;
+  // 輪っかなので端がない。抵抗をかけずそのまま追従させる。
   const pct = (dx / viewport.offsetWidth) * PAGE_STEP;
-  let next = offset + pct;
-  // 端で引っ張りすぎないよう軽く抵抗
-  const last = -(TAB_COUNT - 1) * PAGE_STEP;
-  if (next > 0) next = next * 0.35;
-  if (next < last) next = last + (next - last) * 0.35;
-  pager.style.transform = `translateX(${next}%)`;
+  pager.style.transform = `translateX(${-PAGE_STEP + pct}%)`;
 }, { passive: false });
 
 document.addEventListener('touchend', (e) => {
@@ -627,10 +665,9 @@ document.addEventListener('touchend', (e) => {
   pager.classList.remove('dragging');
   const dx = e.changedTouches[0].clientX - startX;
   const threshold = viewport.offsetWidth * 0.15;
-  let target = currentTab;
-  if (dx < -threshold) target = Math.min(currentTab + 1, TAB_COUNT - 1);
-  else if (dx > threshold) target = Math.max(currentTab - 1, 0);
-  switchTab(target);
+  if (dx < -threshold) goToTab((currentTab + 1) % TAB_COUNT, 1);
+  else if (dx > threshold) goToTab((currentTab - 1 + TAB_COUNT) % TAB_COUNT, -1);
+  else centerPager(false);
 });
 
 /* ============================================================
