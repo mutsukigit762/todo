@@ -331,7 +331,10 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
       <!-- ============ アーカイブページ ============ -->
       <div class="page">
         <div class="page-inner">
-          <div class="list-area" style="margin-top:4px">
+          <div class="list-area">
+            <div class="filter-area">
+              <div class="filter-btns-scroll" id="archive-filter-btns-scroll"></div>
+            </div>
             <div class="todo-list" id="archive-list"></div>
           </div>
         </div>
@@ -524,6 +527,7 @@ const PALETTE = ['#4a90a4','#a0876d','#7a8fa6','#8a6d9a','#6d9a7a','#a46d4a','#9
 let todos = [];
 let categories = [];
 let filterCat = '__all__';
+let archiveFilterCat = '__all__';
 let catLastUsed = {};
 
 // ルール用（todoと完全独立）
@@ -1289,15 +1293,33 @@ function todoRowHtml(todo) {
 }
 
 function renderArchive() {
-  const archived = todos
-    .filter(t => t.archived && !t.done && !t.deleted)
+  const archived = todos.filter(t => t.archived && !t.done && !t.deleted);
+
+  // 絞り込んでいたカテゴリが消えていたら、全部表示に戻す
+  if (archiveFilterCat !== '__all__' && !categories.some(c => c.id === archiveFilterCat)) {
+    archiveFilterCat = '__all__';
+  }
+  document.getElementById('archive-filter-btns-scroll').innerHTML =
+    [...categories].sort((a, b) => (catLastUsed[b.id] || 0) - (catLastUsed[a.id] || 0))
+      .map(c => `
+        <button class="filter-btn${archiveFilterCat === c.id ? ' active' : ''}"
+          onclick="setArchiveFilter('${c.id}')">${escapeHtml(c.name)}</button>`).join('');
+
+  const filtered = archived
+    .filter(t => archiveFilterCat === '__all__' || t.catId === archiveFilterCat)
     .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+
   const list = document.getElementById('archive-list');
-  list.innerHTML = archived.length === 0
-    ? '<div class="empty">アーカイブしたタスクはありません</div>'
-    : archived.map(todoRowHtml).join('');
+  list.innerHTML = filtered.length === 0
+    ? `<div class="empty">${archived.length === 0 ? 'アーカイブしたタスクはありません' : 'このカテゴリのタスクはありません'}</div>`
+    : filtered.map(todoRowHtml).join('');
   updateSubtitle();
 }
+
+window.setArchiveFilter = function(id) {
+  archiveFilterCat = archiveFilterCat === id ? '__all__' : id;
+  renderArchive();
+};
 
 window.setFilter = function(id) {
   if (id === '__all__') {
@@ -1589,7 +1611,7 @@ window.setRuleFilter = function(id) {
 };
 
 /* カテゴリ行：PC/トラックパッドの縦ホイールでも横スクロール */
-['filter-btns-scroll', 'rule-filter-btns-scroll'].forEach(rowId => {
+['filter-btns-scroll', 'archive-filter-btns-scroll', 'rule-filter-btns-scroll'].forEach(rowId => {
   const scrollRow = document.getElementById(rowId);
   scrollRow.addEventListener('wheel', (e) => {
     if (e.deltaY === 0 && e.deltaX === 0) return;
