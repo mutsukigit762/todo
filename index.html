@@ -37,7 +37,10 @@
   }
   .tabbar {
     display: flex; gap: 4px; pointer-events: auto;
-    background: #eae8e3; border-radius: 999px; padding: 3px; flex-shrink: 0;
+    /* 背景(#f5f3ef)の上に重ねると、ちょうど元の #eae8e3 になる色と濃さ。
+       カードが後ろに来たときだけ透けて見える。 */
+    background: rgba(225,223,217,0.55);
+    border-radius: 999px; padding: 3px; flex-shrink: 0;
   }
   .tabbtn {
     flex: 1; border: none; background: transparent; cursor: pointer;
