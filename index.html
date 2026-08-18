@@ -124,12 +124,22 @@
     margin-bottom: 0; position: relative; z-index: 1;
     will-change: transform;
   }
-  /* ベタ塗りではなく、丸ボタンが余白に浮かんでいる見せ方 */
+  /* 長押しで、カードはその場のまま、丸ボタンだけが浮き出てくる */
   .swipe-actions {
     position: absolute; top: 0; bottom: 0; right: 18px; left: auto;
     display: flex; align-items: center; gap: 8px;
-    padding-left: 12px; z-index: 0;
+    padding: 0 12px; z-index: 2;
+    border-radius: 10px;
+    background: linear-gradient(to right, rgba(255,255,255,0), #fff 26px);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform: scale(0.85); transform-origin: right center;
+    transition: opacity 0.16s ease, transform 0.18s cubic-bezier(0.2,0,0.2,1), visibility 0.18s;
   }
+  .todo-item-wrap.open .swipe-actions {
+    opacity: 1; visibility: visible; pointer-events: auto; transform: none;
+  }
+  .todo-item-wrap .todo-item { transition: opacity 0.16s ease; }
+  .todo-item-wrap.open .todo-item { opacity: 0.3; }
   .swipe-action {
     border: none; background: none; padding: 0; cursor: pointer;
     font-family: inherit; font-size: 9px; font-weight: 600; color: #a09b93;
@@ -750,26 +760,17 @@ window.moveTodoToRule = function(id) {
 };
 
 /* ---- タスク行を長押しすると、操作ボタンが出てくる ---- */
-const ACTIONS_WIDTH = 166;
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_TOLERANCE = 10;
 let pressState = null;
 
 function closeAllRowActions() {
-  document.querySelectorAll('.todo-item-wrap.open').forEach(w => {
-    w.classList.remove('open');
-    const item = w.querySelector('.todo-item');
-    if (item) { item.style.transition = 'transform 0.2s ease'; item.style.transform = ''; }
-  });
+  document.querySelectorAll('.todo-item-wrap.open').forEach(w => w.classList.remove('open'));
 }
 
 function openRowActions(wrap) {
   closeAllRowActions();
-  const item = wrap.querySelector('.todo-item');
-  if (!item) return;
   wrap.classList.add('open');
-  item.style.transition = 'transform 0.22s cubic-bezier(0.3,0,0.2,1)';
-  item.style.transform = `translateX(-${ACTIONS_WIDTH}px)`;
   if (navigator.vibrate) navigator.vibrate(12);
 }
 
