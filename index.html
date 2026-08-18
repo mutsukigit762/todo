@@ -46,11 +46,11 @@
      余白ぶんは .page-inner 側で付け直すので、見た目の位置は変わらない。 */
   .pager-viewport { overflow: hidden; width: auto; margin: 0 -16px; display: flex; }
   .pager {
-    display: flex; width: 200%; flex-shrink: 0; align-items: flex-start;
+    display: flex; width: 300%; flex-shrink: 0; align-items: flex-start;
     transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
   }
   .pager.dragging { transition: none; }
-  .page { width: 50%; flex-shrink: 0; display: flex; flex-direction: column; }
+  .page { width: 33.3333%; flex-shrink: 0; display: flex; flex-direction: column; }
   .page-inner { padding: 0 18px; display: flex; flex-direction: column; }
 
   .input-box {
@@ -118,7 +118,7 @@
      ここに overflow:hidden は付けない（切り取り線が行の下に残るため）。 */
   .todo-item-wrap {
     position: relative; margin: 0 -18px 6px; padding: 0 18px;
-    flex-shrink: 0; touch-action: pan-y;
+    flex-shrink: 0;
   }
   .todo-item-wrap .todo-item {
     margin-bottom: 0; position: relative; z-index: 1;
@@ -234,7 +234,8 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
 <div class="wrap">
   <div class="tabbar">
     <button class="tabbtn active" id="tab-todo" onclick="switchTab(0)">TODO</button>
-    <button class="tabbtn" id="tab-rule" onclick="switchTab(1)">RULES</button>
+    <button class="tabbtn" id="tab-archive" onclick="switchTab(1)">アーカイブ</button>
+    <button class="tabbtn" id="tab-rule" onclick="switchTab(2)">RULES</button>
   </div>
   <div class="subtitle" id="subtitle"></div>
 
@@ -264,6 +265,15 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
               <div class="filter-btns-scroll" id="filter-btns-scroll"></div>
             </div>
             <div class="todo-list" id="todo-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ アーカイブページ ============ -->
+      <div class="page">
+        <div class="page-inner">
+          <div class="list-area" style="margin-top:4px">
+            <div class="todo-list" id="archive-list"></div>
           </div>
         </div>
       </div>
@@ -522,14 +532,17 @@ function escapeHtml(str) {
    タブ切り替え & スワイプ
    ============================================================ */
 let currentTab = 0;
+const TAB_COUNT = 3;
+const PAGE_STEP = 100 / TAB_COUNT; // 1ページぶんの移動量（%）
 const pager = document.getElementById('pager');
 const viewport = document.getElementById('pager-viewport');
 
 window.switchTab = function(idx) {
   currentTab = idx;
-  pager.style.transform = `translateX(-${idx * 50}%)`;
+  pager.style.transform = `translateX(-${idx * PAGE_STEP}%)`;
   document.getElementById('tab-todo').classList.toggle('active', idx === 0);
-  document.getElementById('tab-rule').classList.toggle('active', idx === 1);
+  document.getElementById('tab-archive').classList.toggle('active', idx === 1);
+  document.getElementById('tab-rule').classList.toggle('active', idx === 2);
   updateSubtitle();
 };
 
@@ -538,7 +551,7 @@ window.switchTab = function(idx) {
 let startX = 0, startY = 0, dragging = false, decided = false, isHoriz = false, startedInScroller = false;
 
 function isInScroller(target) {
-  return !!(target.closest && (target.closest('.filter-btns-scroll') || target.closest('.todo-item-wrap')));
+  return !!(target.closest && target.closest('.filter-btns-scroll'));
 }
 
 document.addEventListener('touchstart', (e) => {
@@ -564,12 +577,13 @@ document.addEventListener('touchmove', (e) => {
   }
   if (!isHoriz) return;
   e.preventDefault();
-  let offset = -currentTab * 50;
-  const pct = (dx / viewport.offsetWidth) * 50;
+  let offset = -currentTab * PAGE_STEP;
+  const pct = (dx / viewport.offsetWidth) * PAGE_STEP;
   let next = offset + pct;
   // 端で引っ張りすぎないよう軽く抵抗
+  const last = -(TAB_COUNT - 1) * PAGE_STEP;
   if (next > 0) next = next * 0.35;
-  if (next < -50) next = -50 + (next + 50) * 0.35;
+  if (next < last) next = last + (next - last) * 0.35;
   pager.style.transform = `translateX(${next}%)`;
 }, { passive: false });
 
@@ -581,8 +595,8 @@ document.addEventListener('touchend', (e) => {
   const dx = e.changedTouches[0].clientX - startX;
   const threshold = viewport.offsetWidth * 0.15;
   let target = currentTab;
-  if (dx < -threshold && currentTab === 0) target = 1;
-  else if (dx > threshold && currentTab === 1) target = 0;
+  if (dx < -threshold) target = Math.min(currentTab + 1, TAB_COUNT - 1);
+  else if (dx > threshold) target = Math.max(currentTab - 1, 0);
   switchTab(target);
 });
 
@@ -735,90 +749,119 @@ window.moveTodoToRule = function(id) {
   scheduleSave(); render(); renderRules();
 };
 
-/* ---- タスク行のスワイプでゴミ箱/RULES移動ボタンを出す ---- */
-const SWIPE_ACTIONS_WIDTH = 166;
-let swipeState = null;
+/* ---- タスク行を長押しすると、操作ボタンが出てくる ---- */
+const ACTIONS_WIDTH = 166;
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_TOLERANCE = 10;
+let pressState = null;
 
-function closeAllSwipes() {
-  document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
-    w.classList.remove('swiped');
+function closeAllRowActions() {
+  document.querySelectorAll('.todo-item-wrap.open').forEach(w => {
+    w.classList.remove('open');
     const item = w.querySelector('.todo-item');
     if (item) { item.style.transition = 'transform 0.2s ease'; item.style.transform = ''; }
   });
 }
 
-const todoListEl = document.getElementById('todo-list');
-
-todoListEl.addEventListener('touchstart', (e) => {
-  if (e.touches.length !== 1) return;
-  if (e.target.closest('.swipe-actions')) { swipeState = null; return; }
-  const wrap = e.target.closest('.todo-item-wrap');
-  if (!wrap) { closeAllSwipes(); swipeState = null; return; }
+function openRowActions(wrap) {
+  closeAllRowActions();
   const item = wrap.querySelector('.todo-item');
-  const wasOpen = wrap.classList.contains('swiped');
-  document.querySelectorAll('.todo-item-wrap.swiped').forEach(w => {
-    if (w !== wrap) {
-      w.classList.remove('swiped');
-      const it = w.querySelector('.todo-item');
-      if (it) { it.style.transition = 'transform 0.2s ease'; it.style.transform = ''; }
+  if (!item) return;
+  wrap.classList.add('open');
+  item.style.transition = 'transform 0.22s cubic-bezier(0.3,0,0.2,1)';
+  item.style.transform = `translateX(-${ACTIONS_WIDTH}px)`;
+  if (navigator.vibrate) navigator.vibrate(12);
+}
+
+// 長押しの最中に iOS の文字選択が始まらないよう、押しているあいだだけ編集を切る。
+// 短いタップだったら編集に戻して、触った場所にカーソルを置く。
+function suspendEditing(textEl) {
+  if (textEl && document.activeElement !== textEl) textEl.setAttribute('contenteditable', 'false');
+}
+
+function resumeEditing(textEl, focusAt) {
+  if (!textEl || textEl.getAttribute('contenteditable') !== 'false') return;
+  textEl.setAttribute('contenteditable', 'true');
+  if (!focusAt) return;
+  textEl.focus();
+  const range = document.caretRangeFromPoint && document.caretRangeFromPoint(focusAt.x, focusAt.y);
+  const sel = window.getSelection();
+  if (range && sel) { sel.removeAllRanges(); sel.addRange(range); }
+}
+
+function attachLongPress(listEl) {
+  listEl.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    if (e.target.closest('.swipe-actions')) { pressState = null; return; }
+    const wrap = e.target.closest('.todo-item-wrap');
+    if (!wrap) { closeAllRowActions(); pressState = null; return; }
+
+    // 開いている行を触ったときは、その1回では閉じるだけ
+    if (wrap.classList.contains('open')) {
+      pressState = { wrap, closing: true };
+      return;
     }
+    closeAllRowActions();
+
+    const textEl = wrap.querySelector('.todo-text');
+    // 編集中の行では長押しを効かせない（文字を打っている最中に開くと邪魔なので）
+    if (textEl && document.activeElement === textEl) { pressState = null; return; }
+    const onText = !!(textEl && textEl.contains(e.target));
+    suspendEditing(textEl);
+    pressState = {
+      wrap, textEl, onText, closing: false, fired: false,
+      x: e.touches[0].clientX, y: e.touches[0].clientY,
+      timer: setTimeout(() => {
+        if (!pressState) return;
+        pressState.fired = true;
+        openRowActions(wrap);
+      }, LONG_PRESS_MS)
+    };
+  }, { passive: true });
+
+  listEl.addEventListener('touchmove', (e) => {
+    if (!pressState || pressState.closing) return;
+    const dx = e.touches[0].clientX - pressState.x;
+    const dy = e.touches[0].clientY - pressState.y;
+    if (Math.abs(dx) > LONG_PRESS_MOVE_TOLERANCE || Math.abs(dy) > LONG_PRESS_MOVE_TOLERANCE) {
+      clearTimeout(pressState.timer);
+      resumeEditing(pressState.textEl, null);
+      pressState = null;
+    }
+  }, { passive: true });
+
+  listEl.addEventListener('touchend', (e) => {
+    if (!pressState) return;
+    const st = pressState;
+    pressState = null;
+    if (st.closing) { closeAllRowActions(); return; }
+    clearTimeout(st.timer);
+    if (st.fired) return; // 長押しが成立した後のタップは無視
+    const t = e.changedTouches[0];
+    resumeEditing(st.textEl, st.onText ? { x: t.clientX, y: t.clientY } : null);
+  }, { passive: true });
+
+  listEl.addEventListener('touchcancel', () => {
+    if (!pressState) return;
+    clearTimeout(pressState.timer);
+    resumeEditing(pressState.textEl, null);
+    pressState = null;
+  }, { passive: true });
+
+  // PC でも使えるように、右クリックで開く
+  listEl.addEventListener('contextmenu', (e) => {
+    const wrap = e.target.closest('.todo-item-wrap');
+    if (!wrap) return;
+    e.preventDefault();
+    openRowActions(wrap);
   });
-  swipeState = {
-    wrap, item,
-    startX: e.touches[0].clientX, startY: e.touches[0].clientY,
-    startTransform: wasOpen ? -SWIPE_ACTIONS_WIDTH : 0,
-    wasOpen, deciding: true, horiz: false
-  };
-}, { passive: true });
+}
 
-todoListEl.addEventListener('touchmove', (e) => {
-  if (!swipeState) return;
-  const dx = e.touches[0].clientX - swipeState.startX;
-  const dy = e.touches[0].clientY - swipeState.startY;
-  if (swipeState.deciding) {
-    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-    swipeState.horiz = Math.abs(dx) > Math.abs(dy) * 1.4;
-    swipeState.deciding = false;
-  }
-  if (!swipeState.horiz) return;
-  e.preventDefault();
-  let next = swipeState.startTransform + dx;
-  // 両端では引っ張りに抵抗をかけて、行き過ぎないようにする
-  if (next > 0) next = next * 0.3;
-  if (next < -SWIPE_ACTIONS_WIDTH) next = -SWIPE_ACTIONS_WIDTH + (next + SWIPE_ACTIONS_WIDTH) * 0.25;
-  swipeState.item.style.transition = 'none';
-  swipeState.item.style.transform = `translateX(${next}px)`;
-}, { passive: false });
-
-todoListEl.addEventListener('touchend', (e) => {
-  if (!swipeState) return;
-  const { wrap, item, horiz, wasOpen } = swipeState;
-  if (!horiz) {
-    if (wasOpen) {
-      e.preventDefault();
-      wrap.classList.remove('swiped');
-      item.style.transition = 'transform 0.2s ease';
-      item.style.transform = '';
-    }
-    swipeState = null;
-    return;
-  }
-  const dx = e.changedTouches[0].clientX - swipeState.startX;
-  const finalPos = swipeState.startTransform + dx;
-  swipeState = null;
-
-  item.style.transition = 'transform 0.2s ease';
-  if (finalPos < -SWIPE_ACTIONS_WIDTH * 0.4) {
-    item.style.transform = `translateX(-${SWIPE_ACTIONS_WIDTH}px)`;
-    wrap.classList.add('swiped');
-  } else {
-    item.style.transform = '';
-    wrap.classList.remove('swiped');
-  }
-}, { passive: false });
+attachLongPress(document.getElementById('todo-list'));
+attachLongPress(document.getElementById('archive-list'));
 
 document.addEventListener('touchstart', (e) => {
-  if (!e.target.closest('.todo-item-wrap')) closeAllSwipes();
+  if (!e.target.closest('.todo-item-wrap')) closeAllRowActions();
 }, { passive: true });
 
 window.addCategory = function() {
@@ -978,6 +1021,9 @@ function updateSubtitle() {
   if (currentTab === 0) {
     const remaining = todos.filter(t => !t.done && !t.deleted && !t.archived).length;
     el.textContent = todos.length === 0 ? '' : remaining > 0 ? `${remaining} 件残っています` : '全部完了！';
+  } else if (currentTab === 1) {
+    const archived = todos.filter(t => t.archived && !t.done && !t.deleted).length;
+    el.textContent = archived === 0 ? '' : `${archived} 件`;
   } else {
     el.textContent = rules.length === 0 ? '' : `${rules.length} 件`;
   }
@@ -988,12 +1034,10 @@ function render() {
 
   const doneCount = todos.filter(t => t.done && !t.deleted).length;
   const deletedCount = todos.filter(t => t.deleted).length;
-  const archivedCount = todos.filter(t => t.archived && !t.done && !t.deleted).length;
   const btnHtml = c => `
     <button class="filter-btn${filterCat === c.id ? ' active' : ''}${c.cls}"
       onclick="setFilter('${c.id}')">${escapeHtml(c.name)}</button>`;
   document.getElementById('filter-btns-fixed').innerHTML = [
-    {id: '__archived__', name: `アーカイブ${archivedCount > 0 ? ' ' + archivedCount : ''}`, cls: ' done-btn'},
     {id: '__done__', name: `完了済み${doneCount > 0 ? ' ' + doneCount : ''}`, cls: ' done-btn'},
     {id: '__deleted__', name: `削除済み${deletedCount > 0 ? ' ' + deletedCount : ''}`, cls: ' done-btn'}
   ].map(btnHtml).join('');
@@ -1006,7 +1050,6 @@ function render() {
   const filtered = todos.filter(t => {
     if (filterCat === '__deleted__') return t.deleted;
     if (filterCat === '__done__') return t.done && !t.deleted;
-    if (filterCat === '__archived__') return t.archived && !t.done && !t.deleted;
     if (filterCat === '__none__') return !t.catId && !t.done && !t.deleted && !t.archived;
     if (filterCat === '__all__') return !t.done && !t.deleted && !t.archived;
     return t.catId === filterCat && !t.done && !t.deleted && !t.archived;
@@ -1014,8 +1057,6 @@ function render() {
 
   if (filterCat === '__deleted__') {
     filtered.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
-  } else if (filterCat === '__archived__') {
-    filtered.sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
   } else if (filterCat === '__done__') {
     filtered.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
   } else {
@@ -1026,11 +1067,16 @@ function render() {
   if (filtered.length === 0) {
     const emptyMsg = filterCat === '__done__' ? '完了したタスクはありません'
       : filterCat === '__deleted__' ? '削除したタスクはありません'
-      : filterCat === '__archived__' ? 'アーカイブしたタスクはありません'
       : 'タスクがありません';
     list.innerHTML = `<div class="empty">${emptyMsg}</div>`;
   } else {
-    list.innerHTML = filtered.map(todo => {
+    list.innerHTML = filtered.map(todoRowHtml).join('');
+  }
+
+  renderArchive();
+}
+
+function todoRowHtml(todo) {
       const color = todo.catId ? catColor(todo.catId) : null;
       const name = todo.catId ? catName(todo.catId) : null;
       const isDeleted = !!todo.deleted;
@@ -1082,9 +1128,17 @@ function render() {
             ${itemInner}
           </div>
         </div>`;
-    }).join('');
-  }
+}
 
+function renderArchive() {
+  const archived = todos
+    .filter(t => t.archived && !t.done && !t.deleted)
+    .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+  const list = document.getElementById('archive-list');
+  list.innerHTML = archived.length === 0
+    ? '<div class="empty">アーカイブしたタスクはありません</div>'
+    : archived.map(todoRowHtml).join('');
+  updateSubtitle();
 }
 
 window.setFilter = function(id) {
@@ -1094,7 +1148,7 @@ window.setFilter = function(id) {
     filterCat = filterCat === id ? '__all__' : id;
   }
   const sel = document.getElementById('cat-select');
-  if (!['__all__', '__none__', '__done__', '__deleted__', '__archived__'].includes(filterCat)) {
+  if (!['__all__', '__none__', '__done__', '__deleted__'].includes(filterCat)) {
     sel.value = filterCat;
     catLastUsed[filterCat] = Date.now();
     scheduleSave();
