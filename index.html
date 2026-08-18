@@ -714,7 +714,7 @@ window.toggleTodo = function(id) {
           el.style.opacity = '0';
           setTimeout(() => { isAnimating = false; render(); }, 380);
         });
-      }, 1500);
+      }, 3000);
     }
   } else if (!todo.done && filterCat === '__done__') {
     const el = document.querySelector(`[data-todo-id="${id}"]`);
