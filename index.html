@@ -12,7 +12,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, textarea { -webkit-user-select: text; user-select: text; }
   html, body { height: auto; }
-  html { overflow-x: hidden; }
   body {
     min-height: 100dvh;
     background: #f5f3ef;
@@ -20,7 +19,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: calc(16px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom));
+    padding: 0 0 calc(24px + env(safe-area-inset-bottom));
   }
   .wrap {
     width: 100%; max-width: 480px; padding: 0 16px;
@@ -30,6 +29,14 @@
   .subtitle { font-size: 13px; color: #999; margin-top: 0; margin-bottom: 6px; min-height: 16px; flex-shrink: 0; }
 
   /* ---- タブ ---- */
+  /* スクロールしても上に貼り付いたまま。ページ全体のスクロールはそのままなので、
+     OS標準の慣性や上端バーの挙動は変わらない。 */
+  .topbar {
+    position: sticky; top: 0; z-index: 60;
+    background: #f5f3ef;
+    margin: 0 -16px;
+    padding: calc(16px + env(safe-area-inset-top)) 16px 0;
+  }
   .tabbar {
     display: flex; gap: 4px; margin-top: 4px; margin-bottom: 4px;
     background: #eae8e3; border-radius: 10px; padding: 3px; flex-shrink: 0;
@@ -263,14 +270,15 @@ background: #f0eeea; color: #1a1a1a; font-size: 16px; cursor: pointer; margin-to
 </style>
 </head>
 <body>
-<div style="position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#f5f3ef;z-index:9999;"></div>
 <div class="wrap">
-  <div class="tabbar">
-    <button class="tabbtn active" id="tab-todo" onclick="switchTab(0)">TODO</button>
-    <button class="tabbtn" id="tab-archive" onclick="switchTab(1)">アーカイブ</button>
-    <button class="tabbtn" id="tab-rule" onclick="switchTab(2)">RULES</button>
+  <div class="topbar">
+    <div class="tabbar">
+      <button class="tabbtn active" id="tab-todo" onclick="switchTab(0)">TODO</button>
+      <button class="tabbtn" id="tab-archive" onclick="switchTab(1)">アーカイブ</button>
+      <button class="tabbtn" id="tab-rule" onclick="switchTab(2)">RULES</button>
+    </div>
+    <div class="subtitle" id="subtitle"></div>
   </div>
-  <div class="subtitle" id="subtitle"></div>
 
   <div class="pager-viewport" id="pager-viewport">
     <div class="pager" id="pager">
