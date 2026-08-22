@@ -24,6 +24,8 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, textarea { -webkit-user-select: text; user-select: text; }
   html, body { height: auto; }
+  html { overscroll-behavior-y: none; }
+  @keyframes pull-refresh-spin { to { transform: rotate(360deg); } }
   body {
     min-height: 100dvh;
     background: #f5f3ef;
@@ -1639,6 +1641,60 @@ window.setRuleFilter = function(id) {
     scrollRow.scrollLeft += e.deltaX - e.deltaY;
   }, { passive: false });
 });
+
+/* ---- 引っ張って更新 ---- */
+(function() {
+  const THRESHOLD = 64;
+  const indicator = document.createElement('div');
+  indicator.style.cssText = 'position:fixed;top:0;left:0;right:0;height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:9998;pointer-events:none;transition:height .15s;';
+  indicator.innerHTML = '<div style="width:22px;height:22px;border:2.5px solid #d8d5cd;border-top-color:#999;border-radius:50%;"></div>';
+  document.body.appendChild(indicator);
+  const spinner = indicator.firstElementChild;
+
+  let sx = 0, sy = 0, active = false, tracking = false, refreshing = false;
+
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || refreshing || animating || document.querySelector('.modal-overlay.open') || window.scrollY > 0) {
+      active = false; return;
+    }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    active = true; tracking = false;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!active || refreshing) return;
+    const dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if (!tracking) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (dy <= 0 || dy < Math.abs(dx) * 1.5) { active = false; return; }
+      tracking = true;
+    }
+    if (window.scrollY > 0) { active = false; indicator.style.height = '0'; return; }
+    e.preventDefault();
+    const pull = Math.min(dy * 0.5, 80);
+    indicator.style.height = pull + 'px';
+    spinner.style.transform = `rotate(${pull * 3}deg)`;
+    spinner.style.borderTopColor = pull > THRESHOLD ? '#4a90a4' : '#999';
+  }, { passive: false });
+
+  function release() {
+    if (!active) return;
+    active = false;
+    const h = parseFloat(indicator.style.height) || 0;
+    if (h > THRESHOLD) {
+      refreshing = true;
+      indicator.style.height = '46px';
+      spinner.style.transition = 'none';
+      spinner.style.animation = 'pull-refresh-spin .7s linear infinite';
+      setTimeout(() => location.reload(), 250);
+    } else {
+      indicator.style.height = '0';
+    }
+  }
+  document.addEventListener('touchend', release);
+  document.addEventListener('touchcancel', release);
+})();
 </script>
 </body>
 </html>
