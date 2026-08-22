@@ -557,6 +557,31 @@ let ruleCatLastUsed = {};
 let isSaving = false;
 let isAnimating = false;
 
+// ---- 前回表示分のキャッシュ ----
+// 認証の確認とFirestoreへの初回アクセスにはどうしても通信が挟まるので、
+// その間ずっと空っぽの画面を見せるのではなく、前回サーバーから受け取った
+// 内容を先に出しておく。実データが届いたら上書きされる。
+const CACHE_KEY = 'todo-cache-v1';
+let hasCache = false;
+try {
+  const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+  if (cached) {
+    todos = cached.todos || [];
+    categories = cached.categories || [];
+    catLastUsed = cached.catLastUsed || {};
+    rules = cached.rules || [];
+    ruleCategories = cached.ruleCategories || [];
+    ruleCatLastUsed = cached.ruleCatLastUsed || {};
+    hasCache = true;
+  }
+} catch (e) {}
+
+function saveCache() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ todos, categories, catLastUsed, rules, ruleCategories, ruleCatLastUsed }));
+  } catch (e) {}
+}
+
 function setSyncStatus(msg) {
   document.getElementById('sync-status').textContent = msg;
 }
@@ -579,6 +604,10 @@ function scheduleSave() {
   saveToCloud();
 }
 
+// 前回分のキャッシュがあれば、通信を待たずにまずそれを出す。
+// 実データが届いたら差し替わる。
+if (hasCache) { setSyncStatus('読み込み中…'); render(); renderRules(); }
+
 // クラウドのデータを見に行くのは、ログインの確認が済んでから。
 // ここより上（画面の組み立て・ボタンの割り当て）は、確認を待たずに終わっている。
 authReady.then(() => {
@@ -599,6 +628,7 @@ onSnapshot(DATA_DOC, (snap) => {
   setSyncStatus('');
   render();
   renderRules();
+  saveCache();
 }, (err) => {
   setSyncStatus('接続エラー');
   console.error(err);
