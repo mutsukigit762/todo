@@ -24,7 +24,10 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, textarea { -webkit-user-select: text; user-select: text; }
   html, body { height: auto; }
-  html { overscroll-behavior-y: none; }
+  /* overscroll-behavior はあえて指定しない。指定するとiOS標準のゴムの跳ね返りが
+     消えて、慣性で上に着いた時にピタッと止まってしまう。引っ張って更新の側は
+     指で引いている間だけ preventDefault で標準の動きを止めているので、
+     ここを素のままにしてもぶつからない（collectionと同じ作り） */
   /* 引っ張って更新のスピナー（collectionと同じもの） */
   .ptr-spinner { color: #999; }
   /* 実際のiOSと同じく、なめらかにではなく1コマずつカクカク回す（バー8本ぶん） */
