@@ -25,6 +25,10 @@
   input, textarea { -webkit-user-select: text; user-select: text; }
   html, body { height: auto; }
   html { overscroll-behavior-y: none; }
+  /* 引っ張って更新のスピナー（collectionと同じもの） */
+  .ptr-spinner { color: #999; }
+  /* 実際のiOSと同じく、なめらかにではなく1コマずつカクカク回す（バー8本ぶん） */
+  .ptr-spin .ptr-spinner { animation: pull-refresh-spin .8s steps(8) infinite; }
   @keyframes pull-refresh-spin { to { transform: rotate(360deg); } }
   body {
     min-height: 100dvh;
@@ -1678,18 +1682,22 @@ window.setRuleFilter = function(id) {
 });
 
 /* ---- 引っ張って更新 ---- */
-// 指の動きに合わせて画面（.wrap）ごと下にずらし、空いた隙間に丸を出す。
+// 指の動きに合わせて画面（.wrap）ごと下にずらし、空いた隙間にスピナーを出す。
 // モーダルは .wrap の外にあるので、ここに transform をかけても影響しない。
 (function() {
   const THRESHOLD = 64;
   const MAX_PULL = 90;
-  const HOLD = 50;          // 更新中に留まる位置
+  const HOLD = THRESHOLD;   // 更新中に留まる位置
   const EASE = 'cubic-bezier(0.4,0,0.2,1)';
   const wrap = document.querySelector('.wrap');
 
   const indicator = document.createElement('div');
-  indicator.style.cssText = 'position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:9998;pointer-events:none;';
-  indicator.innerHTML = '<div style="width:22px;height:22px;border:2.5px solid #d8d5cd;border-top-color:#999;border-radius:50%;"></div>';
+  indicator.style.cssText = 'position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:center;z-index:9998;pointer-events:none;opacity:0;transform:translateY(-30px);';
+  indicator.innerHTML = '<svg class="ptr-spinner" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">'
+    + [0.15,0.27,0.39,0.51,0.64,0.76,0.88,1.0].map((op, i) =>
+        `<rect x="10.9" y="1.6" width="2.2" height="6.4" rx="1.1" transform="rotate(${i * 45} 12 12)" opacity="${op}"/>`
+      ).join('')
+    + '</svg>';
   document.body.appendChild(indicator);
   const spinner = indicator.firstElementChild;
 
@@ -1700,8 +1708,11 @@ window.setRuleFilter = function(id) {
     const tr = animate ? `transform .28s ${EASE}` : 'none';
     wrap.style.transition = tr;
     wrap.style.transform = px ? `translateY(${px}px)` : '';
-    indicator.style.transition = animate ? `height .28s ${EASE}` : 'none';
-    indicator.style.height = px + 'px';
+    indicator.style.transition = animate ? `opacity .2s ease, transform .28s ${EASE}` : 'none';
+    indicator.style.opacity = px ? Math.min(1, px / THRESHOLD) : 0;
+    indicator.style.transform = px ? `translateY(${px / 2 - 8}px)` : 'translateY(-30px)';
+    // 引いた量に合わせてスピナーも1コマずつ回す（離す前から反応している感じを出す）
+    spinner.style.transform = px ? `rotate(${Math.round(px * 4 / 45) * 45}deg)` : '';
   }
 
   document.addEventListener('touchstart', (e) => {
@@ -1727,18 +1738,18 @@ window.setRuleFilter = function(id) {
     const raw = dy * 0.6;
     const p = raw <= THRESHOLD ? raw : THRESHOLD + (raw - THRESHOLD) * 0.35;
     setPull(Math.min(p, MAX_PULL), false);
-    spinner.style.transform = `rotate(${pull * 3}deg)`;
-    spinner.style.borderTopColor = pull > THRESHOLD ? '#4a90a4' : '#999';
   }, { passive: false });
 
   function release() {
     if (!active) return;
     active = false;
     if (pull > THRESHOLD) {
+      // 十分引いた：スピナーを回したまま、しきい値の位置で読み込みを待たせる
       refreshing = true;
       setPull(HOLD, true);
-      spinner.style.transition = 'none';
-      spinner.style.animation = `pull-refresh-spin .7s linear infinite`;
+      indicator.style.opacity = 1;
+      spinner.style.transform = '';
+      indicator.classList.add('ptr-spin');
       setTimeout(() => location.reload(), 300);
     } else {
       setPull(0, true);
