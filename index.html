@@ -8,6 +8,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>TODO</title>
 <link rel="apple-touch-icon" href="apple-touch-icon-todo.png">
+
+<!-- 起動を速くするための下ごしらえ。
+     つなぎ先の相手に、HTMLを読んでいる間に前もって挨拶しておく。
+     こうしておくと、実際に取りに行く時には道が開通済みで、待ち時間がそのぶん減る -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<!-- Firebaseの部品は、下の <script> にたどり着くのを待たずに取り始める -->
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, textarea { -webkit-user-select: text; user-select: text; }
@@ -485,11 +497,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // ---- ログインの門番 ----
-// ここを通り抜けるまで、この下のアプリ本体は一行も動かない。
+// 門番はここに立っているが、アプリ全体をせき止めてはいない。
+// 以前は await でここを塞いでいたので、ログインの確認（Googleへの問い合わせが
+// 1〜2往復ある）が終わるまで、画面の組み立ても、ボタンの反応も、何もかもが
+// 止まっていた。今は組み立てだけ先に進めて、データを取りに行くところ
+// （下の authReady.then）だけが門番を待つ。待つ間に準備が済むぶん起動が速い。
 // データベース側のルールも「ムツキだけ」に絞ってあるので、二重の守り。
 const auth = getAuth(app);
 if (!document.body) await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
-await new Promise((resolve) => {
+const authReady = new Promise((resolve) => {
   getRedirectResult(auth).catch(() => {});
   const gate = document.createElement('div');
   gate.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#111;color:#eee;font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:24px';
@@ -561,6 +577,9 @@ function scheduleSave() {
   saveToCloud();
 }
 
+// クラウドのデータを見に行くのは、ログインの確認が済んでから。
+// ここより上（画面の組み立て・ボタンの割り当て）は、確認を待たずに終わっている。
+authReady.then(() => {
 onSnapshot(DATA_DOC, (snap) => {
   if (isSaving || isAnimating) return;
   if (!snap.exists()) { setSyncStatus(''); render(); renderRules(); return; }
@@ -581,6 +600,7 @@ onSnapshot(DATA_DOC, (snap) => {
 }, (err) => {
   setSyncStatus('接続エラー');
   console.error(err);
+});
 });
 
 function catColor(catId) { const c = categories.find(c => c.id === catId); return c ? c.color : null; }
