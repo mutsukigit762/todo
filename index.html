@@ -1685,17 +1685,20 @@ window.setRuleFilter = function(id) {
 });
 
 /* ---- 引っ張って更新 ---- */
-// 指の動きに合わせて画面（.wrap）ごと下にずらし、空いた隙間にスピナーを出す。
-// モーダルは .wrap の外にあるので、ここに transform をかけても影響しない。
+// 画面を動かすのは iOS 標準のゴム（びよーん）に任せきりにして、こちらからは
+// 一切 transform をかけない。preventDefault もしないので、4cm 未満で離せば
+// ただの跳ね返りで終わる。こちらは指が動いた量を見ているだけで、
+// 4cm を越えた時にはじめてスピナーを出し、離した時にリロードする。
 (function() {
-  const THRESHOLD = 64;
-  const MAX_PULL = 90;
-  const HOLD = THRESHOLD;   // 更新中に留まる位置
-  const EASE = 'cubic-bezier(0.4,0,0.2,1)';
-  const wrap = document.querySelector('.wrap');
+  // 「4cm」が何pxになるかは端末まかせなので、実際に測って決める
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;top:0;left:0;height:4cm;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(probe);
+  const TRIGGER = probe.offsetHeight || 151;   // 4cm ≒ 151px
+  probe.remove();
 
   const indicator = document.createElement('div');
-  indicator.style.cssText = 'position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:center;z-index:9998;pointer-events:none;opacity:0;transform:translateY(-30px);';
+  indicator.style.cssText = 'position:fixed;top:calc(14px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:center;z-index:9998;pointer-events:none;opacity:0;transition:opacity .2s ease;';
   indicator.innerHTML = '<svg class="ptr-spinner" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">'
     + [0.15,0.27,0.39,0.51,0.64,0.76,0.88,1.0].map((op, i) =>
         `<rect x="10.9" y="1.6" width="2.2" height="6.4" rx="1.1" transform="rotate(${i * 45} 12 12)" opacity="${op}"/>`
@@ -1704,26 +1707,14 @@ window.setRuleFilter = function(id) {
   document.body.appendChild(indicator);
   const spinner = indicator.firstElementChild;
 
-  let sx = 0, sy = 0, active = false, tracking = false, refreshing = false, pull = 0;
-
-  function setPull(px, animate) {
-    pull = px;
-    const tr = animate ? `transform .28s ${EASE}` : 'none';
-    wrap.style.transition = tr;
-    wrap.style.transform = px ? `translateY(${px}px)` : '';
-    indicator.style.transition = animate ? `opacity .2s ease, transform .28s ${EASE}` : 'none';
-    indicator.style.opacity = px ? Math.min(1, px / THRESHOLD) : 0;
-    indicator.style.transform = px ? `translateY(${px / 2 - 8}px)` : 'translateY(-30px)';
-    // 引いた量に合わせてスピナーも1コマずつ回す（離す前から反応している感じを出す）
-    spinner.style.transform = px ? `rotate(${Math.round(px * 4 / 45) * 45}deg)` : '';
-  }
+  let sx = 0, sy = 0, active = false, tracking = false, refreshing = false, reached = false;
 
   document.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1 || refreshing || animating || document.querySelector('.modal-overlay.open') || window.scrollY > 0) {
       active = false; return;
     }
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-    active = true; tracking = false;
+    active = true; tracking = false; reached = false;
   }, { passive: true });
 
   document.addEventListener('touchmove', (e) => {
@@ -1735,28 +1726,27 @@ window.setRuleFilter = function(id) {
       if (dy <= 0 || dy < Math.abs(dx) * 1.5) { active = false; return; }
       tracking = true;
     }
-    if (window.scrollY > 0) { active = false; setPull(0, false); return; }
-    e.preventDefault();
-    // しきい値までは素直に付いてきて、それ以降は重くなる
-    const raw = dy * 0.6;
-    const p = raw <= THRESHOLD ? raw : THRESHOLD + (raw - THRESHOLD) * 0.35;
-    setPull(Math.min(p, MAX_PULL), false);
-  }, { passive: false });
+    // 途中で下にスクロールし始めたら、それはもう引っ張りではない
+    if (window.scrollY > 0) { active = false; reached = false; indicator.style.opacity = 0; return; }
+    reached = dy >= TRIGGER;
+    // 4cm に届くまでは何も出さない。届いてはじめてスピナーが顔を出す
+    indicator.style.opacity = reached ? 1 : 0;
+    if (reached) {
+      // 越えたぶんに合わせて1コマずつ回す（離す前から反応している感じを出す）
+      spinner.style.transform = `rotate(${Math.round((dy - TRIGGER) / 12) * 45}deg)`;
+    }
+  }, { passive: true });
 
   function release() {
     if (!active) return;
     active = false;
-    if (pull > THRESHOLD) {
-      // 十分引いた：スピナーを回したまま、しきい値の位置で読み込みを待たせる
-      refreshing = true;
-      setPull(HOLD, true);
-      indicator.style.opacity = 1;
-      spinner.style.transform = '';
-      indicator.classList.add('ptr-spin');
-      setTimeout(() => location.reload(), 300);
-    } else {
-      setPull(0, true);
-    }
+    if (!reached) { indicator.style.opacity = 0; return; }
+    // 4cm を越えて離した：スピナーを回したまま読み込み直す
+    refreshing = true;
+    indicator.style.opacity = 1;
+    spinner.style.transform = '';
+    indicator.classList.add('ptr-spin');
+    setTimeout(() => location.reload(), 300);
   }
   document.addEventListener('touchend', release);
   document.addEventListener('touchcancel', release);
