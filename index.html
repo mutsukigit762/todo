@@ -1678,15 +1678,31 @@ window.setRuleFilter = function(id) {
 });
 
 /* ---- 引っ張って更新 ---- */
+// 指の動きに合わせて画面（.wrap）ごと下にずらし、空いた隙間に丸を出す。
+// モーダルは .wrap の外にあるので、ここに transform をかけても影響しない。
 (function() {
   const THRESHOLD = 64;
+  const MAX_PULL = 90;
+  const HOLD = 50;          // 更新中に留まる位置
+  const EASE = 'cubic-bezier(0.4,0,0.2,1)';
+  const wrap = document.querySelector('.wrap');
+
   const indicator = document.createElement('div');
-  indicator.style.cssText = 'position:fixed;top:0;left:0;right:0;height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:9998;pointer-events:none;transition:height .15s;';
+  indicator.style.cssText = 'position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:9998;pointer-events:none;';
   indicator.innerHTML = '<div style="width:22px;height:22px;border:2.5px solid #d8d5cd;border-top-color:#999;border-radius:50%;"></div>';
   document.body.appendChild(indicator);
   const spinner = indicator.firstElementChild;
 
-  let sx = 0, sy = 0, active = false, tracking = false, refreshing = false;
+  let sx = 0, sy = 0, active = false, tracking = false, refreshing = false, pull = 0;
+
+  function setPull(px, animate) {
+    pull = px;
+    const tr = animate ? `transform .28s ${EASE}` : 'none';
+    wrap.style.transition = tr;
+    wrap.style.transform = px ? `translateY(${px}px)` : '';
+    indicator.style.transition = animate ? `height .28s ${EASE}` : 'none';
+    indicator.style.height = px + 'px';
+  }
 
   document.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1 || refreshing || animating || document.querySelector('.modal-overlay.open') || window.scrollY > 0) {
@@ -1705,10 +1721,12 @@ window.setRuleFilter = function(id) {
       if (dy <= 0 || dy < Math.abs(dx) * 1.5) { active = false; return; }
       tracking = true;
     }
-    if (window.scrollY > 0) { active = false; indicator.style.height = '0'; return; }
+    if (window.scrollY > 0) { active = false; setPull(0, false); return; }
     e.preventDefault();
-    const pull = Math.min(dy * 0.5, 80);
-    indicator.style.height = pull + 'px';
+    // しきい値までは素直に付いてきて、それ以降は重くなる
+    const raw = dy * 0.6;
+    const p = raw <= THRESHOLD ? raw : THRESHOLD + (raw - THRESHOLD) * 0.35;
+    setPull(Math.min(p, MAX_PULL), false);
     spinner.style.transform = `rotate(${pull * 3}deg)`;
     spinner.style.borderTopColor = pull > THRESHOLD ? '#4a90a4' : '#999';
   }, { passive: false });
@@ -1716,15 +1734,14 @@ window.setRuleFilter = function(id) {
   function release() {
     if (!active) return;
     active = false;
-    const h = parseFloat(indicator.style.height) || 0;
-    if (h > THRESHOLD) {
+    if (pull > THRESHOLD) {
       refreshing = true;
-      indicator.style.height = '46px';
+      setPull(HOLD, true);
       spinner.style.transition = 'none';
-      spinner.style.animation = 'pull-refresh-spin .7s linear infinite';
-      setTimeout(() => location.reload(), 250);
+      spinner.style.animation = `pull-refresh-spin .7s linear infinite`;
+      setTimeout(() => location.reload(), 300);
     } else {
-      indicator.style.height = '0';
+      setPull(0, true);
     }
   }
   document.addEventListener('touchend', release);
