@@ -1686,15 +1686,15 @@ window.setRuleFilter = function(id) {
 
 /* ---- 引っ張って更新 ---- */
 // 画面を動かすのは iOS 標準のゴム（びよーん）に任せきりにして、こちらからは
-// 一切 transform をかけない。preventDefault もしないので、4cm 未満で離せば
+// 一切 transform をかけない。preventDefault もしないので、8cm 未満で離せば
 // ただの跳ね返りで終わる。こちらは指が動いた量を見ているだけで、
-// 4cm を越えた時にはじめてスピナーを出し、離した時にリロードする。
+// 8cm を越えた時にはじめてスピナーを出し、離した時にリロードする。
 (function() {
-  // 「4cm」が何pxになるかは端末まかせなので、実際に測って決める
+  // 「8cm」が何pxになるかは端末まかせなので、実際に測って決める
   const probe = document.createElement('div');
-  probe.style.cssText = 'position:absolute;top:0;left:0;height:4cm;visibility:hidden;pointer-events:none;';
+  probe.style.cssText = 'position:absolute;top:0;left:0;height:8cm;visibility:hidden;pointer-events:none;';
   document.body.appendChild(probe);
-  const TRIGGER = probe.offsetHeight || 151;   // 4cm ≒ 151px
+  const TRIGGER = probe.offsetHeight || 302;   // 8cm ≒ 302px
   probe.remove();
 
   const indicator = document.createElement('div');
@@ -1729,7 +1729,7 @@ window.setRuleFilter = function(id) {
     // 途中で下にスクロールし始めたら、それはもう引っ張りではない
     if (window.scrollY > 0) { active = false; reached = false; indicator.style.opacity = 0; return; }
     reached = dy >= TRIGGER;
-    // 4cm に届くまでは何も出さない。届いてはじめてスピナーが顔を出す
+    // 8cm に届くまでは何も出さない。届いてはじめてスピナーが顔を出す
     indicator.style.opacity = reached ? 1 : 0;
     if (reached) {
       // 越えたぶんに合わせて1コマずつ回す（離す前から反応している感じを出す）
@@ -1741,7 +1741,7 @@ window.setRuleFilter = function(id) {
     if (!active) return;
     active = false;
     if (!reached) { indicator.style.opacity = 0; return; }
-    // 4cm を越えて離した：スピナーを回したまま読み込み直す
+    // 8cm を越えて離した：スピナーを回したまま読み込み直す
     refreshing = true;
     indicator.style.opacity = 1;
     spinner.style.transform = '';
