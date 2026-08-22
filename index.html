@@ -606,7 +606,12 @@ function scheduleSave() {
 
 // 前回分のキャッシュがあれば、通信を待たずにまずそれを出す。
 // 実データが届いたら差し替わる。
-if (hasCache) { setSyncStatus('読み込み中…'); render(); renderRules(); }
+// render/renderRules はこの下でまだ準備できていない変数（タブの状態など）を
+// 参照するので、この場で同期的に呼ばず、他の下ごしらえが全部終わってから呼ぶ。
+if (hasCache) {
+  setSyncStatus('読み込み中…');
+  setTimeout(() => { render(); renderRules(); }, 0);
+}
 
 // クラウドのデータを見に行くのは、ログインの確認が済んでから。
 // ここより上（画面の組み立て・ボタンの割り当て）は、確認を待たずに終わっている。
