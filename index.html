@@ -148,13 +148,17 @@
     display: block;
     padding-bottom: 0;
   }
+  /* 行の中身は上下2段。上段が今までの1行（チェック・本文・カテゴリ）、
+     下段が編集中だけ開く情報パネル。閉じている間は高さゼロなので、
+     見た目は今までと変わらない。 */
   .todo-item {
     background: #fff; border-radius: 10px; padding: 12px 14px;
-    display: flex; align-items: flex-start; gap: 12px;
+    display: flex; flex-direction: column;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     margin-bottom: 6px; overflow: hidden;
     flex-shrink: 0; position: relative;
   }
+  .todo-row { display: flex; align-items: flex-start; gap: 12px; }
   .todo-item.done { opacity: 0.5; }
   /* 行だけ左右の余白の外まで広げる。マイナスの margin で外に出して、
      同じぶんの padding で中身の位置は元のまま。カードが画面端まで走れる。
@@ -236,6 +240,52 @@
   .todo-item.done .todo-text { text-decoration: line-through; color: #aaa; }
   .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; margin-top: 3px; }
   .tag.no-cat { color: #ccc; background: #f5f5f5; }
+  /* カテゴリの札とⓘの入れ物。高さを決め打ちにしておくことで、
+     編集に入って中身が入れ替わっても行の高さが動かない（画面がガタつかない）。
+     元は .tag 自身が持っていた margin-top / flex-shrink をここへ移している。 */
+  .tag-slot {
+    display: inline-flex; align-items: center; justify-content: flex-end;
+    height: 21px; margin-top: 3px; flex-shrink: 0; min-width: 0;
+  }
+  /* 高さ揃えは入れ物側で持つので、札の側の余白はここで打ち消す
+     （RULES の行は入れ物を使っていないので、そちらは元のまま） */
+  .tag-slot .tag, .tag-slot .info-btn {
+    height: 21px; box-sizing: border-box; margin-top: 0;
+    display: inline-flex; align-items: center;
+  }
+  .tag-slot .info-btn { display: none; }
+  .todo-item.is-editing .tag-slot .tag { display: none; }
+  .todo-item.is-editing .tag-slot .info-btn { display: inline-flex; }
+  .info-btn {
+    width: 21px; padding: 0; justify-content: center;
+    font-size: 13px; line-height: 1; color: #999;
+    background: #f0eeea; border: none; border-radius: 50%;
+    cursor: pointer; font-family: inherit;
+  }
+  .info-btn.active { color: #6b6b6b; background: #e4e0d9; }
+  /* 情報パネル。grid の行の高さを 0fr → 1fr で動かすと、中身が何行になるかを
+     こちらが知らなくても、開け閉めがなめらかに決まる。 */
+  .info-panel-wrap {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 0.18s ease, margin-top 0.18s ease;
+  }
+  .todo-item.info-open .info-panel-wrap { grid-template-rows: 1fr; margin-top: 10px; }
+  .info-panel-wrap > .info-panel { overflow: hidden; min-height: 0; }
+  .info-panel-inner {
+    border-top: 1px solid #f0eeea; padding-top: 9px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .info-row { display: flex; align-items: baseline; gap: 8px; font-size: 11px; }
+  .info-label { color: #bbb; flex: 0 0 auto; min-width: 52px; }
+  .info-value { color: #888; }
+  .info-memo { display: flex; flex-direction: column; gap: 4px; margin-top: 3px; }
+  .info-memo-input {
+    width: 100%; box-sizing: border-box;
+    background: #faf9f7; border: 1px solid #f0eeea; border-radius: 8px;
+    padding: 7px 9px; font-size: 14px; font-family: inherit; color: #1a1a1a;
+    outline: none; resize: vertical; min-height: 54px; line-height: 1.5;
+  }
+  .info-memo-input:focus { border-color: #ddd8cf; }
   .del-btn { border: none; background: none; cursor: pointer; color: #ccc; font-size: 18px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
   .empty { text-align: center; color: #bbb; font-size: 16px; padding: 32px 0; }
   .sync-status { position: fixed; right: 20px; bottom: calc(2px + env(safe-area-inset-bottom)); font-size: 11px; color: #bbb; text-align: right; pointer-events: none; z-index: 50; }
@@ -624,7 +674,9 @@ if (hasCache) {
 // ここより上（画面の組み立て・ボタンの割り当て）は、確認を待たずに終わっている。
 authReady.then(() => {
 onSnapshot(DATA_DOC, (snap) => {
-  if (isSaving || isAnimating) return;
+  // 編集中も見送る。ここで画面を作り直すと、打っている行が作り替えられて
+  // カーソルも開いているパネルも飛んでしまう。
+  if (isSaving || isAnimating || editingTodoEl()) return;
   if (!snap.exists()) { setSyncStatus(''); render(); renderRules(); return; }
   const data = snap.data();
   todos = (data.todos || []).map(t => ({...t, id: Number(t.id) || t.id}));
@@ -962,9 +1014,133 @@ window.permanentlyDeleteTodo = function(id) {
 window.editTodoText = function(id, text) {
   text = text.trim();
   if (!text) return;
-  todos = todos.map(t => t.id === id ? {...t, text} : t);
+  const cur = todos.find(t => t.id === id);
+  // カーソルを置いただけで抜けた時も呼ばれる。中身が同じなら、
+  // 更新日時を動かさないし、保存もしない。
+  if (!cur || cur.text === text) return;
+  todos = todos.map(t => t.id === id ? {...t, text, updatedAt: Date.now()} : t);
   scheduleSave();
 };
+
+/* ============================================================
+   行の編集モードと情報パネル
+   ------------------------------------------------------------
+   本文にカーソルが入っている間を「編集モード」と呼ぶ。その間だけ
+   カテゴリの札がⓘに入れ替わり、ⓘを押すと行の中で詳細が開く。
+   ============================================================ */
+
+// 今編集中の行。クラウドから新しいデータが届いた時、この行があるあいだは
+// 画面を作り直さない（打っている最中にカーソルが飛ぶため）。
+function editingTodoEl() {
+  return document.querySelector('.todo-item.is-editing');
+}
+
+function enterTodoEditing(itemEl) {
+  if (!itemEl) return;
+  const cur = editingTodoEl();
+  if (cur === itemEl) return;
+  if (cur) exitTodoEditing(cur);
+  itemEl.classList.add('is-editing');
+}
+
+function exitTodoEditing(itemEl) {
+  if (!itemEl) return;
+  itemEl.classList.remove('is-editing');
+  itemEl.classList.remove('info-open');
+  const btn = itemEl.querySelector('.info-btn');
+  if (btn) { btn.classList.remove('active'); btn.setAttribute('aria-expanded', 'false'); }
+  flushMemoSave();
+}
+
+document.addEventListener('focusin', (e) => {
+  const textEl = e.target.closest && e.target.closest('.todo-text');
+  if (!textEl) return;
+  enterTodoEditing(textEl.closest('.todo-item'));
+});
+
+// 行の外を触ったら編集を確定して抜ける。パネルの中のメモ欄へ移っただけでは
+// 抜けない（同じ行の中だから）。iOS は blur の時点で「次にどこへ移るか」が
+// 取れないことがあるので、フォーカスではなく触った場所で決めている。
+function todoOutsideTapCheck(e) {
+  const cur = editingTodoEl();
+  if (!cur || cur.contains(e.target)) return;
+  exitTodoEditing(cur);
+}
+document.addEventListener('mousedown', todoOutsideTapCheck, true);
+document.addEventListener('touchstart', todoOutsideTapCheck, true);
+
+// 日時はJSTで出す。端末の時計の設定に関係なく日本時間で揃える。
+function fmtStamp(ms) {
+  if (!Number.isFinite(ms)) return '—';
+  const p = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date(ms)).reduce((a, x) => (a[x.type] = x.value, a), {});
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+
+// 作成日時は別に持っていない。id が作った時の Date.now() そのものなので、
+// 昔のタスクもここから読める。時刻として読めない id は「—」にする。
+function todoCreatedAt(todo) {
+  const ms = Number(todo.id);
+  return Number.isFinite(ms) && ms > 946684800000 ? ms : NaN;
+}
+
+function infoPanelHtml(todo) {
+  const name = todo.catId ? catName(todo.catId) : null;
+  return `
+    <div class="info-panel-inner">
+      <div class="info-row"><span class="info-label">カテゴリ</span><span class="info-value">${name ? escapeHtml(name) : '未分類'}</span></div>
+      <div class="info-row"><span class="info-label">作成</span><span class="info-value">${fmtStamp(todoCreatedAt(todo))}</span></div>
+      <div class="info-row"><span class="info-label">更新</span><span class="info-value">${fmtStamp(Number(todo.updatedAt))}</span></div>
+      <div class="info-memo">
+        <span class="info-label">メモ</span>
+        <textarea class="info-memo-input" placeholder="メモ…"
+          oninput="onTodoMemoInput(${todo.id}, this.value)">${escapeHtml(todo.memo || '')}</textarea>
+      </div>
+    </div>`;
+}
+
+window.toggleTodoInfo = function(id) {
+  const itemEl = document.querySelector(`.todo-item[data-todo-id="${id}"]`);
+  const todo = todos.find(t => t.id === id);
+  if (!itemEl || !todo) return;
+  const opening = !itemEl.classList.contains('info-open');
+  itemEl.classList.toggle('info-open', opening);
+  const btn = itemEl.querySelector('.info-btn');
+  if (btn) { btn.classList.toggle('active', opening); btn.setAttribute('aria-expanded', opening ? 'true' : 'false'); }
+  if (opening) {
+    const panel = document.getElementById(`info-panel-${id}`);
+    if (panel) panel.innerHTML = infoPanelHtml(todo);
+  }
+};
+
+// メモは本文（todo.text）とは別の入れ物に持たせる。
+// 打つたびに送ると通信が増えるので、手が止まってからまとめて保存する。
+let memoSaveTimer = null;
+
+window.onTodoMemoInput = function(id, val) {
+  todos = todos.map(t => t.id === id ? {...t, memo: val, updatedAt: Date.now()} : t);
+  clearTimeout(memoSaveTimer);
+  memoSaveTimer = setTimeout(() => { memoSaveTimer = null; scheduleSave(); }, 800);
+};
+
+function flushMemoSave() {
+  if (!memoSaveTimer) return;
+  clearTimeout(memoSaveTimer);
+  memoSaveTimer = null;
+  scheduleSave();
+}
+
+// 外から貼り付けた時、書式ごと入ってくるのを防ぐ。contenteditable は
+// 既定で HTML をそのまま受け取ってしまうので、文字だけ取り出して入れ直す。
+document.addEventListener('paste', (e) => {
+  const textEl = e.target.closest && e.target.closest('.todo-text');
+  if (!textEl) return;
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if (text) document.execCommand('insertText', false, text);
+});
 
 window.archiveTodo = function(id) {
   todos = todos.map(t => t.id === id ? {...t, archived: true, archivedAt: Date.now()} : t);
@@ -1194,7 +1370,7 @@ window.openChangeCatModal = function(todoId) {
 
 window.changeTodoCat = function(catId) {
   const realId = catId === 'null' ? null : catId;
-  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: realId} : t);
+  todos = todos.map(t => t.id === changeCatTargetId ? {...t, catId: realId, updatedAt: Date.now()} : t);
   if (realId) catLastUsed[realId] = Date.now();
   scheduleSave(); render(); window.closeChangeCatModal();
 };
@@ -1315,16 +1491,24 @@ function todoRowHtml(todo) {
           <div class="todo-text"${isDeleted ? '' : ' contenteditable="true"'}
             ${isDeleted ? '' : `onblur="editTodoText(${todo.id}, this.innerText)"`}
             >${escapeHtml(todo.text)}</div>
-          <span class="tag${name?'':' no-cat'}"
-            style="${name?`background:${color}22;color:${color}`:''}"
-            ${isDeleted ? '' : `onclick="openChangeCatModal(${todo.id})"`}>${name?escapeHtml(name):'未分類'}</span>`;
+          <span class="tag-slot">
+            <span class="tag${name?'':' no-cat'}"
+              style="${name?`background:${color}22;color:${color}`:''}"
+              ${isDeleted ? '' : `onclick="openChangeCatModal(${todo.id})"`}>${name?escapeHtml(name):'未分類'}</span>
+            ${isDeleted ? '' : `<button type="button" class="info-btn" aria-label="詳細" aria-expanded="false"
+              onmousedown="event.preventDefault()"
+              ontouchend="event.preventDefault(); toggleTodoInfo(${todo.id})"
+              onclick="toggleTodoInfo(${todo.id})">ⓘ</button>`}
+          </span>`;
 
       if (isDeleted) {
         return `
         <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
-          ${itemInner}
-          <button class="del-btn" onclick="restoreTodo(${todo.id})" title="元に戻す">↺</button>
-          <button class="del-btn" onclick="permanentlyDeleteTodo(${todo.id})" title="完全に削除">×</button>
+          <div class="todo-row">
+            ${itemInner}
+            <button class="del-btn" onclick="restoreTodo(${todo.id})" title="元に戻す">↺</button>
+            <button class="del-btn" onclick="permanentlyDeleteTodo(${todo.id})" title="完全に削除">×</button>
+          </div>
         </div>`;
       }
       // アーカイブ中の行は「アーカイブ」ボタンの代わりに「戻す」を出す
@@ -1351,7 +1535,8 @@ function todoRowHtml(todo) {
             </button>
           </div>
           <div class="todo-item${todo.done ? ' done' : ''}" data-todo-id="${todo.id}">
-            ${itemInner}
+            <div class="todo-row">${itemInner}</div>
+            <div class="info-panel-wrap"><div class="info-panel" id="info-panel-${todo.id}"></div></div>
           </div>
         </div>`;
 }
