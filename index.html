@@ -241,10 +241,11 @@
   .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0; background: #f0eeea; color: #888; cursor: pointer; margin-top: 3px; }
   .tag.no-cat { color: #ccc; background: #f5f5f5; }
   /* カテゴリの札とⓘの入れ物。高さを決め打ちにしておくことで、
-     編集に入って中身が入れ替わっても行の高さが動かない（画面がガタつかない）。
+     中で何が起きても行の高さが動かない（画面がガタつかない）。
      元は .tag 自身が持っていた margin-top / flex-shrink をここへ移している。 */
   .tag-slot {
     display: inline-flex; align-items: center; justify-content: flex-end;
+    gap: 8px;
     height: 21px; margin-top: 3px; flex-shrink: 0; min-width: 0;
   }
   /* 高さ揃えは入れ物側で持つので、札の側の余白はここで打ち消す
@@ -253,27 +254,26 @@
     height: 21px; box-sizing: border-box; margin-top: 0;
     display: inline-flex; align-items: center;
   }
-  .tag-slot .info-btn { display: none; }
-  .todo-item.is-editing .tag-slot .tag { display: none; }
-  .todo-item.is-editing .tag-slot .info-btn { display: inline-flex; }
+  /* 札の右にいつも出ている。地は敷かず字だけ置く（札の隣で主張しすぎないように）。
+     ⓘという字そのものが丸を持っているので、後ろに丸を敷く必要はない。 */
   .info-btn {
     width: 21px; padding: 0; justify-content: center;
-    font-size: 13px; line-height: 1; color: #999;
-    background: #f0eeea; border: none; border-radius: 50%;
+    font-size: 15px; line-height: 1; color: #c4beb4;
+    background: none; border: none;
     cursor: pointer; font-family: inherit;
     position: relative;
   }
-  /* 見た目は小さい丸のまま、指で押せる範囲だけ外へ広げる（21px角→44px角）。
+  .info-btn.active { color: #8a847b; }
+  /* 見た目は字のままで、指で押せる範囲だけ外へ広げる。
      絶対配置で重ねているので、行の高さは動かない。
-     左は本文との間の空き（gap 12px）の内側までに留めてあるので、
-     本文の末尾を押してカーソルを置く操作は今まで通りできる。
+     左は札との間の空き（gap 8px）の内側までに留めてあるので、
+     札を押してカテゴリを変える操作は今まで通りできる。
      行には overflow:hidden が掛かっていて外にはみ出したぶんは押せなくなるため、
      上下は行の高さ（48px）に収まる範囲で広げている。 */
   .info-btn::after {
     content: ''; position: absolute;
-    top: -12px; bottom: -11px; left: -11px; right: -12px;
+    top: -12px; bottom: -11px; left: -5px; right: -12px;
   }
-  .info-btn.active { color: #6b6b6b; background: #e4e0d9; }
   /* 情報パネル。grid の行の高さを 0fr → 1fr で動かすと、中身が何行になるかを
      こちらが知らなくても、開け閉めがなめらかに決まる。 */
   .info-panel-wrap {
@@ -687,7 +687,7 @@ authReady.then(() => {
 onSnapshot(DATA_DOC, (snap) => {
   // 編集中も見送る。ここで画面を作り直すと、打っている行が作り替えられて
   // カーソルも開いているパネルも飛んでしまう。
-  if (isSaving || isAnimating || editingTodoEl()) return;
+  if (isSaving || isAnimating || busyTodoEl()) return;
   if (!snap.exists()) { setSyncStatus(''); render(); renderRules(); return; }
   const data = snap.data();
   todos = (data.todos || []).map(t => ({...t, id: Number(t.id) || t.id}));
@@ -1034,48 +1034,48 @@ window.editTodoText = function(id, text) {
 };
 
 /* ============================================================
-   行の編集モードと情報パネル
+   行の情報パネル
    ------------------------------------------------------------
-   本文にカーソルが入っている間を「編集モード」と呼ぶ。その間だけ
-   カテゴリの札がⓘに入れ替わり、ⓘを押すと行の中で詳細が開く。
+   ⓘはカテゴリの札の右にいつも出ている。押すと行の中で詳細が開く。
+   本文を打っているかどうかとは切り離してあるので、読んでいる時でも開ける。
    ============================================================ */
 
-// 今編集中の行。クラウドから新しいデータが届いた時、この行があるあいだは
-// 画面を作り直さない（打っている最中にカーソルが飛ぶため）。
-function editingTodoEl() {
-  return document.querySelector('.todo-item.is-editing');
+// 手が掛かっている行（本文を打っている・詳細を開いている）。
+// クラウドから新しいデータが届いても、この行があるあいだは画面を作り直さない
+// （作り直すとカーソルも開いたパネルも飛ぶ）。
+function busyTodoEl() {
+  return document.querySelector('.todo-item.is-editing, .todo-item.info-open');
 }
 
-function enterTodoEditing(itemEl) {
-  if (!itemEl) return;
-  const cur = editingTodoEl();
-  if (cur === itemEl) return;
-  if (cur) exitTodoEditing(cur);
-  itemEl.classList.add('is-editing');
-}
+// 本文にカーソルがあるかどうかの印。今は再描画を止める判断だけに使っている。
+document.addEventListener('focusin', (e) => {
+  const textEl = e.target.closest && e.target.closest('.todo-text');
+  if (!textEl) return;
+  const item = textEl.closest('.todo-item');
+  if (item) item.classList.add('is-editing');
+});
+document.addEventListener('focusout', (e) => {
+  const textEl = e.target.closest && e.target.closest('.todo-text');
+  if (!textEl) return;
+  const item = textEl.closest('.todo-item');
+  if (item) item.classList.remove('is-editing');
+});
 
-function exitTodoEditing(itemEl) {
+function closeTodoInfo(itemEl) {
   if (!itemEl) return;
-  itemEl.classList.remove('is-editing');
   itemEl.classList.remove('info-open');
   const btn = itemEl.querySelector('.info-btn');
   if (btn) { btn.classList.remove('active'); btn.setAttribute('aria-expanded', 'false'); }
   flushMemoSave();
 }
 
-document.addEventListener('focusin', (e) => {
-  const textEl = e.target.closest && e.target.closest('.todo-text');
-  if (!textEl) return;
-  enterTodoEditing(textEl.closest('.todo-item'));
-});
-
-// 行の外を触ったら編集を確定して抜ける。パネルの中のメモ欄へ移っただけでは
-// 抜けない（同じ行の中だから）。iOS は blur の時点で「次にどこへ移るか」が
+// 行の外を触ったら開いている詳細を閉じる。パネルの中のメモ欄へ移っただけでは
+// 閉じない（同じ行の中だから）。iOS は blur の時点で「次にどこへ移るか」が
 // 取れないことがあるので、フォーカスではなく触った場所で決めている。
 function todoOutsideTapCheck(e) {
-  const cur = editingTodoEl();
-  if (!cur || cur.contains(e.target)) return;
-  exitTodoEditing(cur);
+  const open = document.querySelector('.todo-item.info-open');
+  if (!open || open.contains(e.target)) return;
+  closeTodoInfo(open);
 }
 document.addEventListener('mousedown', todoOutsideTapCheck, true);
 document.addEventListener('touchstart', todoOutsideTapCheck, true);
@@ -1116,19 +1116,20 @@ window.toggleTodoInfo = function(id) {
   const itemEl = document.querySelector(`.todo-item[data-todo-id="${id}"]`);
   const todo = todos.find(t => t.id === id);
   if (!itemEl || !todo) return;
-  const opening = !itemEl.classList.contains('info-open');
-  itemEl.classList.toggle('info-open', opening);
+  if (itemEl.classList.contains('info-open')) { closeTodoInfo(itemEl); return; }
+  // 開けるのは一度にひとつ。別の行が開いていたら先に閉じる
+  const other = document.querySelector('.todo-item.info-open');
+  if (other && other !== itemEl) closeTodoInfo(other);
+
+  itemEl.classList.add('info-open');
   const btn = itemEl.querySelector('.info-btn');
-  if (btn) { btn.classList.toggle('active', opening); btn.setAttribute('aria-expanded', opening ? 'true' : 'false'); }
-  if (opening) {
-    const panel = document.getElementById(`info-panel-${id}`);
-    if (panel) panel.innerHTML = infoPanelHtml(todo);
-    // 詳細を開いた時点で本文の編集は終わり。カーソルを外してキーボードを引っ込める
-    // （onblur から本文の保存も走る）。行は編集モードのままなので、
-    // ⓘも開いたパネルもそのまま残る。
-    const textEl = itemEl.querySelector('.todo-text');
-    if (textEl && document.activeElement === textEl) textEl.blur();
-  }
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-expanded', 'true'); }
+  const panel = document.getElementById(`info-panel-${id}`);
+  if (panel) panel.innerHTML = infoPanelHtml(todo);
+  // 本文を打っている最中に開いたなら、そこで本文の編集は終わり。
+  // カーソルを外してキーボードを引っ込める（onblur から本文の保存も走る）。
+  const textEl = itemEl.querySelector('.todo-text');
+  if (textEl && document.activeElement === textEl) textEl.blur();
 };
 
 // メモは本文（todo.text）とは別の入れ物に持たせる。
@@ -1187,6 +1188,9 @@ function closeAllRowActions() {
 
 function openRowActions(wrap) {
   closeAllRowActions();
+  // 詳細が開いていたら閉じる。ボタンとパネルが同時に出ると行が混み合うため
+  const openInfo = document.querySelector('.todo-item.info-open');
+  if (openInfo) closeTodoInfo(openInfo);
   wrap.classList.add('open');
   if (navigator.vibrate) navigator.vibrate(12);
 }
