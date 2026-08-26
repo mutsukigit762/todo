@@ -1098,10 +1098,9 @@ function todoCreatedAt(todo) {
 }
 
 function infoPanelHtml(todo) {
-  const name = todo.catId ? catName(todo.catId) : null;
+  // カテゴリはすぐ左に札が出ているので、ここには並べない
   return `
     <div class="info-panel-inner">
-      <div class="info-row"><span class="info-label">カテゴリ</span><span class="info-value">${name ? escapeHtml(name) : '未分類'}</span></div>
       <div class="info-row"><span class="info-label">作成</span><span class="info-value">${fmtStamp(todoCreatedAt(todo))}</span></div>
       <div class="info-row"><span class="info-label">更新</span><span class="info-value">${fmtStamp(Number(todo.updatedAt))}</span></div>
       <div class="info-memo">
