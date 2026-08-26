@@ -261,6 +261,17 @@
     font-size: 13px; line-height: 1; color: #999;
     background: #f0eeea; border: none; border-radius: 50%;
     cursor: pointer; font-family: inherit;
+    position: relative;
+  }
+  /* 見た目は小さい丸のまま、指で押せる範囲だけ外へ広げる（21px角→44px角）。
+     絶対配置で重ねているので、行の高さは動かない。
+     左は本文との間の空き（gap 12px）の内側までに留めてあるので、
+     本文の末尾を押してカーソルを置く操作は今まで通りできる。
+     行には overflow:hidden が掛かっていて外にはみ出したぶんは押せなくなるため、
+     上下は行の高さ（48px）に収まる範囲で広げている。 */
+  .info-btn::after {
+    content: ''; position: absolute;
+    top: -12px; bottom: -11px; left: -11px; right: -12px;
   }
   .info-btn.active { color: #6b6b6b; background: #e4e0d9; }
   /* 情報パネル。grid の行の高さを 0fr → 1fr で動かすと、中身が何行になるかを
@@ -1112,6 +1123,11 @@ window.toggleTodoInfo = function(id) {
   if (opening) {
     const panel = document.getElementById(`info-panel-${id}`);
     if (panel) panel.innerHTML = infoPanelHtml(todo);
+    // 詳細を開いた時点で本文の編集は終わり。カーソルを外してキーボードを引っ込める
+    // （onblur から本文の保存も走る）。行は編集モードのままなので、
+    // ⓘも開いたパネルもそのまま残る。
+    const textEl = itemEl.querySelector('.todo-text');
+    if (textEl && document.activeElement === textEl) textEl.blur();
   }
 };
 
